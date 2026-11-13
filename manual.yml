@@ -1,0 +1,67 @@
+name: Manual run
+
+# Actions tab -> "Manual run" -> Run workflow -> choose a command.
+# First time: choose "setup".
+on:
+  workflow_dispatch:
+    inputs:
+      command:
+        description: "What to run"
+        required: true
+        default: setup
+        type: choice
+        options:
+          - setup          # diagnose + full history backfill + fundamentals + analysis
+          - diagnose       # test every data source and print the result
+          - backfill       # download missing price history
+          - rebackfill     # re-download ALL price history (slow)
+          - fundamentals   # refresh EPS / P/E / book value now
+          - analyze        # rebuild dashboard from stored data
+          - optimize       # parameter search for all strategies
+          - test           # run the unit tests
+
+permissions:
+  contents: write
+
+concurrency:
+  group: screener-data
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt pytest
+      - name: Run
+        env:
+          PORTFOLIO_CSV: ${{ secrets.PORTFOLIO_CSV }}
+        run: |
+          case "${{ inputs.command }}" in
+            setup)        python run.py diagnose
+                          python run.py universe
+                          python run.py backfill
+                          python run.py fundamentals
+                          python run.py analyze --no-email ;;
+            diagnose)     python run.py diagnose ;;
+            backfill)     python run.py backfill ;;
+            rebackfill)   python run.py backfill --force ;;
+            fundamentals) python run.py fundamentals ;;
+            analyze)      python run.py analyze --no-email ;;
+            optimize)     python run.py optimize && python run.py analyze --no-email ;;
+            test)         python -m pytest -q tests ;;
+          esac
+      - name: Save
+        if: inputs.command != 'test'
+        run: |
+          git config user.name "nepse-screener-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data docs/data
+          git diff --cached --quiet || git commit -m "Manual ${{ inputs.command }} $(date -u +%Y-%m-%d)"
+          git pull --rebase --autostash || true
+          git push

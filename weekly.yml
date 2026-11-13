@@ -1,0 +1,38 @@
+name: Weekly optimisation
+
+# Friday 6:00 AM Nepal time (00:15 UTC) — NEPSE is closed on Fridays.
+on:
+  schedule:
+    - cron: "15 0 * * 5"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: screener-data
+  cancel-in-progress: false
+
+jobs:
+  optimise:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Optimise strategy parameters (train / out-of-sample test)
+        run: python run.py optimize
+      - name: Refresh dashboard with optimisation results
+        run: python run.py analyze --no-email
+      - name: Save
+        run: |
+          git config user.name "nepse-screener-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data docs/data
+          git diff --cached --quiet || git commit -m "Weekly optimisation $(date -u +%Y-%m-%d)"
+          git pull --rebase --autostash || true
+          git push
