@@ -1,0 +1,278 @@
+date,symbol,sector,stance_code,stance,score,close,regime,source,model_version
+2026-11-14,ACLBSL,Microfinance,-2,EXIT,18.2,813.0,-1,live,1.0
+2026-11-14,ADBL,Commercial Banks,0,HOLD,70.6,335.0,-1,live,1.0
+2026-11-14,AHL,Hydro Power,0,HOLD,63.3,400.0,-1,live,1.0
+2026-11-14,AHPC,Hydro Power,0,HOLD,51.8,256.9,-1,live,1.0
+2026-11-14,AKJCL,Hydro Power,-1,REDUCE,40.9,341.0,-1,live,1.0
+2026-11-14,AKPL,Hydro Power,0,HOLD,47.0,254.0,-1,live,1.0
+2026-11-14,ALBSL,Microfinance,0,HOLD,71.2,1174.7,-1,live,1.0
+2026-11-14,ALICL,Life Insurance,-1,REDUCE,35.1,420.0,-1,live,1.0
+2026-11-14,ANLB,Microfinance,-2,EXIT,36.6,4880.0,-1,live,1.0
+2026-11-14,APHL,Hydro Power,-1,REDUCE,28.7,566.0,-1,live,1.0
+2026-11-14,API,Hydro Power,0,HOLD,67.4,333.0,-1,live,1.0
+2026-11-14,AVYAN,Microfinance,0,HOLD,41.5,1009.0,-1,live,1.0
+2026-11-14,BANDIPUR,Hotels And Tourism,-2,EXIT,14.7,553.9,-1,live,1.0
+2026-11-14,BARUN,Hydro Power,0,HOLD,67.6,323.9,-1,live,1.0
+2026-11-14,BBC,Tradings,-2,EXIT,31.5,4015.0,-1,live,1.0
+2026-11-14,BEDC,Hydro Power,0,HOLD,41.6,296.0,-1,live,1.0
+2026-11-14,BFC,Finance,0,HOLD,56.0,466.6,-1,live,1.0
+2026-11-14,BGWT,Hydro Power,0,HOLD,51.5,507.0,-1,live,1.0
+2026-11-14,BHCL,Hydro Power,0,HOLD,63.7,543.9,-1,live,1.0
+2026-11-14,BHDC,Hydro Power,0,HOLD,63.7,429.0,-1,live,1.0
+2026-11-14,BHL,Hydro Power,0,HOLD,79.7,226.0,-1,live,1.0
+2026-11-14,BHPL,Hydro Power,-1,REDUCE,42.5,433.4,-1,live,1.0
+2026-11-14,BJHL,Hydro Power,-2,EXIT,18.5,553.0,-1,live,1.0
+2026-11-14,BNHC,Hydro Power,-2,EXIT,33.6,267.3,-1,live,1.0
+2026-11-14,BNL,Manufacturing And Processing,0,HOLD,48.5,14000.0,-1,live,1.0
+2026-11-14,BNT,Manufacturing And Processing,0,HOLD,72.8,11900.0,-1,live,1.0
+2026-11-14,BPCL,Hydro Power,0,HOLD,62.5,715.0,-1,live,1.0
+2026-11-14,BUNGAL,Hydro Power,-2,EXIT,37.0,458.0,-1,live,1.0
+2026-11-14,CBBL,Microfinance,0,HOLD,75.0,984.2,-1,live,1.0
+2026-11-14,CFCL,Finance,0,HOLD,69.1,600.0,-1,live,1.0
+2026-11-14,CGH,Hotels And Tourism,-2,EXIT,35.2,724.8,-1,live,1.0
+2026-11-14,CHCL,Hydro Power,-2,EXIT,26.8,336.9,-1,live,1.0
+2026-11-14,CHDC,Investment,0,HOLD,50.4,2284.5,-1,live,1.0
+2026-11-14,CHL,Hydro Power,-2,EXIT,34.0,258.0,-1,live,1.0
+2026-11-14,CIT,Investment,0,HOLD,43.2,1703.0,-1,live,1.0
+2026-11-14,CITY,Hotels And Tourism,-2,EXIT,19.0,319.0,-1,live,1.0
+2026-11-14,CKHL,Hydro Power,-2,EXIT,30.4,430.0,-1,live,1.0
+2026-11-14,CLI,Life Insurance,0,HOLD,57.7,433.1,-1,live,1.0
+2026-11-14,CORBL,Development Banks,-2,EXIT,21.4,755.0,-1,live,1.0
+2026-11-14,CREST,Life Insurance,-1,REDUCE,38.4,1078.0,-1,live,1.0
+2026-11-14,CYCL,Microfinance,-2,EXIT,25.7,1295.0,-1,live,1.0
+2026-11-14,CZBIL,Commercial Banks,0,HOLD,69.5,217.9,-1,live,1.0
+2026-11-14,DDBL,Microfinance,0,HOLD,76.4,869.8,-1,live,1.0
+2026-11-14,DHEL,Hydro Power,-2,EXIT,25.6,499.0,-1,live,1.0
+2026-11-14,DHPL,Hydro Power,-1,REDUCE,47.4,269.9,-1,live,1.0
+2026-11-14,DLBS,Microfinance,-1,REDUCE,30.3,1025.0,-1,live,1.0
+2026-11-14,DOLTI,Hydro Power,0,HOLD,48.5,308.0,-1,live,1.0
+2026-11-14,DORDI,Hydro Power,0,HOLD,61.8,274.0,-1,live,1.0
+2026-11-14,EBL,Commercial Banks,0,HOLD,78.5,713.0,-1,live,1.0
+2026-11-14,ECL,Manufacturing And Processing,0,HOLD,52.8,1249.0,-1,live,1.0
+2026-11-14,EDBL,Development Banks,-1,REDUCE,35.6,568.0,-1,live,1.0
+2026-11-14,EHPL,Hydro Power,-1,REDUCE,47.6,321.8,-1,live,1.0
+2026-11-14,ENL,Investment,-2,EXIT,36.3,481.0,-1,live,1.0
+2026-11-14,FMDBL,Microfinance,-1,REDUCE,36.0,717.0,-1,live,1.0
+2026-11-14,FOWAD,Microfinance,-1,REDUCE,50.6,885.0,-1,live,1.0
+2026-11-14,GBBL,Development Banks,0,HOLD,73.0,410.0,-1,live,1.0
+2026-11-14,GBIME,Commercial Banks,0,HOLD,88.1,265.9,-1,live,1.0
+2026-11-14,GBLBS,Microfinance,-2,EXIT,28.1,642.0,-1,live,1.0
+2026-11-14,GCIL,Manufacturing And Processing,-2,EXIT,30.4,350.1,-1,live,1.0
+2026-11-14,GFCL,Finance,-1,REDUCE,46.1,558.3,-1,live,1.0
+2026-11-14,GHL,Hydro Power,0,HOLD,65.3,324.0,-1,live,1.0
+2026-11-14,GILB,Microfinance,0,HOLD,56.0,1124.0,-1,live,1.0
+2026-11-14,GLBSL,Microfinance,-2,EXIT,34.9,1450.0,-1,live,1.0
+2026-11-14,GLH,Hydro Power,0,HOLD,41.6,261.1,-1,live,1.0
+2026-11-14,GMFBS,Microfinance,-2,EXIT,21.0,1000.2,-1,live,1.0
+2026-11-14,GMFIL,Finance,-2,EXIT,29.9,411.0,-1,live,1.0
+2026-11-14,GMLI,Life Insurance,-2,EXIT,22.6,883.1,-1,live,1.0
+2026-11-14,GRDBL,Development Banks,-2,EXIT,31.6,933.0,-1,live,1.0
+2026-11-14,GUFL,Finance,-1,REDUCE,51.5,495.0,-1,live,1.0
+2026-11-14,GVL,Hydro Power,0,HOLD,73.9,570.0,-1,live,1.0
+2026-11-14,HATHY,Investment,-2,EXIT,19.7,406.0,-1,live,1.0
+2026-11-14,HBL,Commercial Banks,0,HOLD,66.0,200.4,-1,live,1.0
+2026-11-14,HDHPC,Hydro Power,0,HOLD,44.2,214.3,-1,live,1.0
+2026-11-14,HDL,Manufacturing And Processing,0,HOLD,83.6,1302.4,-1,live,1.0
+2026-11-14,HEI,Non Life Insurance,-1,REDUCE,47.4,443.9,-1,live,1.0
+2026-11-14,HFIN,Hotels And Tourism,-2,EXIT,13.8,513.0,-1,live,1.0
+2026-11-14,HHL,Hydro Power,0,HOLD,56.8,352.0,-1,live,1.0
+2026-11-14,HIDCL,Investment,0,HOLD,44.5,252.0,-1,live,1.0
+2026-11-14,HIMSTAR,Hydro Power,-2,EXIT,16.3,595.5,-1,live,1.0
+2026-11-14,HLBSL,Microfinance,-2,EXIT,35.5,860.0,-1,live,1.0
+2026-11-14,HLI,Life Insurance,0,HOLD,48.8,300.6,-1,live,1.0
+2026-11-14,HPPL,Hydro Power,0,HOLD,78.3,414.0,-1,live,1.0
+2026-11-14,HRL,Others,-1,REDUCE,32.6,491.0,-1,live,1.0
+2026-11-14,HURJA,Hydro Power,0,HOLD,86.8,266.5,-1,live,1.0
+2026-11-14,ICFC,Finance,0,HOLD,60.1,605.2,-1,live,1.0
+2026-11-14,IGI,Non Life Insurance,-2,EXIT,35.0,394.5,-1,live,1.0
+2026-11-14,IHL,Hydro Power,-1,REDUCE,35.5,311.7,-1,live,1.0
+2026-11-14,ILBS,Microfinance,0,HOLD,53.9,962.0,-1,live,1.0
+2026-11-14,ILI,Life Insurance,0,HOLD,74.3,440.0,-1,live,1.0
+2026-11-14,JBBL,Development Banks,0,HOLD,78.0,352.4,-1,live,1.0
+2026-11-14,JBLB,Microfinance,0,HOLD,54.0,1280.0,-1,live,1.0
+2026-11-14,JFL,Finance,-2,EXIT,11.5,270.3,-1,live,1.0
+2026-11-14,JHAPA,Others,-2,EXIT,25.6,905.0,-1,live,1.0
+2026-11-14,JOSHI,Hydro Power,-2,EXIT,25.4,257.1,-1,live,1.0
+2026-11-14,JSLBB,Microfinance,-2,EXIT,20.5,901.0,-1,live,1.0
+2026-11-14,KAHL,Hydro Power,-1,REDUCE,38.5,425.0,-1,live,1.0
+2026-11-14,KBL,Commercial Banks,0,HOLD,78.8,229.9,-1,live,1.0
+2026-11-14,KBSH,Hydro Power,0,HOLD,41.3,907.4,-1,live,1.0
+2026-11-14,KDL,Hotels And Tourism,-2,EXIT,15.7,489.9,-1,live,1.0
+2026-11-14,KHPL,Hydro Power,-2,EXIT,15.6,618.9,-1,live,1.0
+2026-11-14,KKHC,Hydro Power,-1,REDUCE,55.6,262.0,-1,live,1.0
+2026-11-14,KMCDB,Microfinance,-1,REDUCE,39.6,774.0,-1,live,1.0
+2026-11-14,KPCL,Hydro Power,0,HOLD,55.0,478.8,-1,live,1.0
+2026-11-14,KSBBL,Development Banks,0,HOLD,76.9,480.0,-1,live,1.0
+2026-11-14,LBBL,Development Banks,0,HOLD,87.5,533.0,-1,live,1.0
+2026-11-14,LEC,Hydro Power,0,HOLD,52.9,231.4,-1,live,1.0
+2026-11-14,LICN,Life Insurance,0,HOLD,47.2,800.0,-1,live,1.0
+2026-11-14,LLBS,Microfinance,-1,REDUCE,42.5,812.7,-1,live,1.0
+2026-11-14,LSL,Commercial Banks,0,HOLD,73.1,272.9,-1,live,1.0
+2026-11-14,MABEL,Hydro Power,-2,EXIT,15.8,498.0,-1,live,1.0
+2026-11-14,MAKAR,Hydro Power,0,HOLD,67.5,462.0,-1,live,1.0
+2026-11-14,MANDU,Hydro Power,0,HOLD,78.7,825.9,-1,live,1.0
+2026-11-14,MATRI,Microfinance,-1,REDUCE,43.3,701.0,-1,live,1.0
+2026-11-14,MBJC,Hydro Power,0,HOLD,79.0,325.7,-1,live,1.0
+2026-11-14,MBL,Commercial Banks,0,HOLD,81.5,268.0,-1,live,1.0
+2026-11-14,MCHL,Hydro Power,-2,EXIT,18.8,257.0,-1,live,1.0
+2026-11-14,MDB,Development Banks,0,HOLD,51.0,574.0,-1,live,1.0
+2026-11-14,MEHL,Hydro Power,0,HOLD,40.1,243.5,-1,live,1.0
+2026-11-14,MEL,Hydro Power,-1,REDUCE,37.7,211.9,-1,live,1.0
+2026-11-14,MEN,Hydro Power,0,HOLD,81.2,568.0,-1,live,1.0
+2026-11-14,MERO,Microfinance,0,HOLD,53.3,610.0,-1,live,1.0
+2026-11-14,MFIL,Finance,-2,EXIT,36.8,666.1,-1,live,1.0
+2026-11-14,MHCL,Hydro Power,-1,REDUCE,53.3,285.1,-1,live,1.0
+2026-11-14,MHL,Hydro Power,0,HOLD,60.9,508.0,-1,live,1.0
+2026-11-14,MHNL,Hydro Power,0,HOLD,74.5,267.9,-1,live,1.0
+2026-11-14,MKCL,Others,-2,EXIT,14.1,722.0,-1,live,1.0
+2026-11-14,MKHC,Hydro Power,0,HOLD,63.4,274.0,-1,live,1.0
+2026-11-14,MKHL,Hydro Power,-1,REDUCE,37.3,506.7,-1,live,1.0
+2026-11-14,MKJC,Hydro Power,-2,EXIT,21.1,295.0,-1,live,1.0
+2026-11-14,MLBBL,Microfinance,-1,REDUCE,46.2,930.0,-1,live,1.0
+2026-11-14,MLBL,Development Banks,0,HOLD,65.8,373.0,-1,live,1.0
+2026-11-14,MLBS,Microfinance,-2,EXIT,31.2,984.0,-1,live,1.0
+2026-11-14,MLBSL,Microfinance,-2,EXIT,32.2,1010.0,-1,live,1.0
+2026-11-14,MMKJL,Hydro Power,-1,REDUCE,36.9,387.0,-1,live,1.0
+2026-11-14,MNBBL,Development Banks,0,HOLD,58.4,345.0,-1,live,1.0
+2026-11-14,MPFL,Finance,-1,REDUCE,33.6,565.0,-1,live,1.0
+2026-11-14,MSHL,Hydro Power,-1,REDUCE,44.6,550.0,-1,live,1.0
+2026-11-14,MSLB,Microfinance,-2,EXIT,24.9,1170.0,-1,live,1.0
+2026-11-14,NABBC,Development Banks,-2,EXIT,22.9,655.0,-1,live,1.0
+2026-11-14,NABIL,Commercial Banks,0,HOLD,79.5,549.0,-1,live,1.0
+2026-11-14,NADEP,Microfinance,-1,REDUCE,41.4,661.1,-1,live,1.0
+2026-11-14,NBL,Commercial Banks,0,HOLD,78.3,305.1,-1,live,1.0
+2026-11-14,NESDO,Microfinance,-1,REDUCE,48.4,1330.0,-1,live,1.0
+2026-11-14,NFS,Finance,-2,EXIT,27.8,478.0,-1,live,1.0
+2026-11-14,NGPL,Hydro Power,-2,EXIT,37.1,398.9,-1,live,1.0
+2026-11-14,NHDL,Hydro Power,0,HOLD,49.2,642.1,-1,live,1.0
+2026-11-14,NHPC,Hydro Power,-1,REDUCE,39.5,253.5,-1,live,1.0
+2026-11-14,NICA,Commercial Banks,0,HOLD,61.9,342.0,-1,live,1.0
+2026-11-14,NICL,Non Life Insurance,-2,EXIT,32.4,437.0,-1,live,1.0
+2026-11-14,NICLBSL,Microfinance,-2,EXIT,27.3,498.8,-1,live,1.0
+2026-11-14,NIFRA,Investment,0,HOLD,51.5,245.0,-1,live,1.0
+2026-11-14,NIL,Non Life Insurance,-1,REDUCE,40.9,523.9,-1,live,1.0
+2026-11-14,NIMB,Commercial Banks,0,HOLD,81.3,206.1,-1,live,1.0
+2026-11-14,NLG,Non Life Insurance,-1,REDUCE,28.3,508.0,-1,live,1.0
+2026-11-14,NLIC,Life Insurance,0,HOLD,52.8,736.0,-1,live,1.0
+2026-11-14,NLICL,Life Insurance,0,HOLD,49.3,580.0,-1,live,1.0
+2026-11-14,NMB,Commercial Banks,0,HOLD,89.2,274.5,-1,live,1.0
+2026-11-14,NMBMF,Microfinance,0,HOLD,59.8,604.0,-1,live,1.0
+2026-11-14,NMFBS,Microfinance,0,HOLD,71.6,1207.0,-1,live,1.0
+2026-11-14,NMIC,Non Life Insurance,-1,REDUCE,30.5,772.0,-1,live,1.0
+2026-11-14,NMLBBL,Microfinance,-1,REDUCE,28.2,484.0,-1,live,1.0
+2026-11-14,NRIC,Others,-1,REDUCE,32.6,870.0,-1,live,1.0
+2026-11-14,NRM,Others,-1,REDUCE,36.7,307.0,-1,live,1.0
+2026-11-14,NRN,Investment,-1,REDUCE,30.5,1382.9,-1,live,1.0
+2026-11-14,NTC,Others,0,HOLD,83.9,940.3,-1,live,1.0
+2026-11-14,NUBL,Microfinance,0,HOLD,49.8,603.2,-1,live,1.0
+2026-11-14,NWCL,Others,-2,EXIT,12.1,500.0,-1,live,1.0
+2026-11-14,NYADI,Hydro Power,-2,EXIT,26.2,339.0,-1,live,1.0
+2026-11-14,OHL,Hotels And Tourism,-1,REDUCE,38.6,643.0,-1,live,1.0
+2026-11-14,OMPL,Manufacturing And Processing,-2,EXIT,19.6,794.0,-1,live,1.0
+2026-11-14,PCBL,Commercial Banks,0,HOLD,80.7,269.9,-1,live,1.0
+2026-11-14,PCIL,Manufacturing And Processing,-2,EXIT,27.2,605.9,-1,live,1.0
+2026-11-14,PFL,Finance,-2,EXIT,15.6,324.1,-1,live,1.0
+2026-11-14,PHCL,Hydro Power,0,HOLD,67.5,356.0,-1,live,1.0
+2026-11-14,PMHPL,Hydro Power,-1,REDUCE,45.9,306.0,-1,live,1.0
+2026-11-14,PMLI,Life Insurance,0,HOLD,48.9,420.0,-1,live,1.0
+2026-11-14,PPCL,Hydro Power,0,HOLD,73.1,355.0,-1,live,1.0
+2026-11-14,PPL,Hydro Power,-2,EXIT,30.6,317.0,-1,live,1.0
+2026-11-14,PRIN,Non Life Insurance,-1,REDUCE,43.2,584.0,-1,live,1.0
+2026-11-14,PROFL,Finance,-2,EXIT,17.8,374.0,-1,live,1.0
+2026-11-14,PRVU,Commercial Banks,0,HOLD,55.3,186.9,-1,live,1.0
+2026-11-14,PURE,Others,-2,EXIT,37.1,747.0,-1,live,1.0
+2026-11-14,RADHI,Hydro Power,0,HOLD,52.9,716.0,-1,live,1.0
+2026-11-14,RAWA,Hydro Power,-1,REDUCE,46.8,413.8,-1,live,1.0
+2026-11-14,RBCL,Non Life Insurance,-2,EXIT,34.7,14100.0,-1,live,1.0
+2026-11-14,RFPL,Hydro Power,0,HOLD,60.2,374.0,-1,live,1.0
+2026-11-14,RHGCL,Hydro Power,0,HOLD,41.8,261.0,-1,live,1.0
+2026-11-14,RHPL,Hydro Power,-2,EXIT,29.9,167.0,-1,live,1.0
+2026-11-14,RIDI,Hydro Power,-1,REDUCE,50.8,334.6,-1,live,1.0
+2026-11-14,RLEL,Hydro Power,-1,REDUCE,30.0,623.0,-1,live,1.0
+2026-11-14,RLFL,Finance,-2,EXIT,27.8,408.0,-1,live,1.0
+2026-11-14,RNLI,Life Insurance,0,HOLD,67.8,452.0,-1,live,1.0
+2026-11-14,RSDC,Microfinance,-2,EXIT,35.0,620.0,-1,live,1.0
+2026-11-14,RSML,Manufacturing And Processing,-1,REDUCE,51.3,2670.0,-1,live,1.0
+2026-11-14,RURU,Hydro Power,0,HOLD,59.9,625.9,-1,live,1.0
+2026-11-14,SABBL,Development Banks,-2,EXIT,14.6,814.9,-1,live,1.0
+2026-11-14,SADBL,Development Banks,0,HOLD,46.3,394.4,-1,live,1.0
+2026-11-14,SAGAR,Manufacturing And Processing,-2,EXIT,20.4,1510.0,-1,live,1.0
+2026-11-14,SAHAS,Hydro Power,0,HOLD,80.1,725.0,-1,live,1.0
+2026-11-14,SAIL,Manufacturing And Processing,-2,EXIT,26.3,899.9,-1,live,1.0
+2026-11-14,SALICO,Non Life Insurance,-1,REDUCE,45.5,520.0,-1,live,1.0
+2026-11-14,SANIMA,Commercial Banks,0,HOLD,89.2,402.0,-1,live,1.0
+2026-11-14,SANVI,Hydro Power,-2,EXIT,22.0,480.1,-1,live,1.0
+2026-11-14,SAPDBL,Development Banks,-2,EXIT,35.6,554.8,-1,live,1.0
+2026-11-14,SARBTM,Manufacturing And Processing,0,HOLD,51.9,797.0,-1,live,1.0
+2026-11-14,SBI,Commercial Banks,0,HOLD,75.6,429.0,-1,live,1.0
+2026-11-14,SBL,Commercial Banks,0,HOLD,79.6,435.9,-1,live,1.0
+2026-11-14,SCB,Commercial Banks,0,HOLD,71.1,670.2,-1,live,1.0
+2026-11-14,SGHC,Hydro Power,0,HOLD,80.5,357.1,-1,live,1.0
+2026-11-14,SGHL,Hydro Power,-1,REDUCE,54.1,474.0,-1,live,1.0
+2026-11-14,SGIC,Non Life Insurance,-2,EXIT,37.3,386.0,-1,live,1.0
+2026-11-14,SHEL,Hydro Power,0,HOLD,64.2,307.0,-1,live,1.0
+2026-11-14,SHINE,Development Banks,0,HOLD,77.8,409.0,-1,live,1.0
+2026-11-14,SHIVM,Manufacturing And Processing,0,HOLD,78.5,676.0,-1,live,1.0
+2026-11-14,SHL,Hotels And Tourism,0,HOLD,82.0,550.0,-1,live,1.0
+2026-11-14,SHLB,Microfinance,0,HOLD,41.8,1320.0,-1,live,1.0
+2026-11-14,SHPC,Hydro Power,0,HOLD,88.9,575.0,-1,live,1.0
+2026-11-14,SICL,Non Life Insurance,-1,REDUCE,35.8,540.0,-1,live,1.0
+2026-11-14,SIFC,Finance,-2,EXIT,36.6,471.0,-1,live,1.0
+2026-11-14,SIKLES,Hydro Power,0,HOLD,68.5,594.5,-1,live,1.0
+2026-11-14,SINDU,Development Banks,-2,EXIT,19.2,405.1,-1,live,1.0
+2026-11-14,SIPD,Hydro Power,-2,EXIT,15.2,498.0,-1,live,1.0
+2026-11-14,SJCL,Hydro Power,-1,REDUCE,34.9,245.0,-1,live,1.0
+2026-11-14,SJLIC,Life Insurance,0,HOLD,64.9,429.0,-1,live,1.0
+2026-11-14,SKBBL,Microfinance,0,HOLD,45.5,760.0,-1,live,1.0
+2026-11-14,SKHEL,Hydro Power,-2,EXIT,14.3,741.1,-1,live,1.0
+2026-11-14,SKHL,Hydro Power,-1,REDUCE,32.4,681.3,-1,live,1.0
+2026-11-14,SLBBL,Microfinance,0,HOLD,66.3,829.1,-1,live,1.0
+2026-11-14,SLBSL,Microfinance,-2,EXIT,30.6,835.0,-1,live,1.0
+2026-11-14,SMATA,Microfinance,-2,EXIT,31.8,675.5,-1,live,1.0
+2026-11-14,SMB,Microfinance,-1,REDUCE,38.1,1732.0,-1,live,1.0
+2026-11-14,SMFBS,Microfinance,0,HOLD,47.9,1380.0,-1,live,1.0
+2026-11-14,SMH,Hydro Power,0,HOLD,64.0,580.0,-1,live,1.0
+2026-11-14,SMHL,Hydro Power,0,HOLD,69.3,490.0,-1,live,1.0
+2026-11-14,SMJC,Hydro Power,0,HOLD,41.3,420.0,-1,live,1.0
+2026-11-14,SMPDA,Microfinance,-2,EXIT,30.3,715.0,-1,live,1.0
+2026-11-14,SNLI,Life Insurance,0,HOLD,60.2,416.0,-1,live,1.0
+2026-11-14,SNORL,Hydro Power,0,HOLD,53.1,810.0,-1,live,1.0
+2026-11-14,SOHL,Hydro Power,0,HOLD,45.9,630.0,-1,live,1.0
+2026-11-14,SONA,Manufacturing And Processing,0,HOLD,82.9,460.0,-1,live,1.0
+2026-11-14,SOPL,Manufacturing And Processing,-1,REDUCE,33.6,629.0,-1,live,1.0
+2026-11-14,SPC,Hydro Power,0,HOLD,64.6,421.9,-1,live,1.0
+2026-11-14,SPDL,Hydro Power,-2,EXIT,39.4,352.8,-1,live,1.0
+2026-11-14,SPHL,Hydro Power,0,HOLD,44.6,525.0,-1,live,1.0
+2026-11-14,SPIL,Non Life Insurance,0,HOLD,42.9,609.7,-1,live,1.0
+2026-11-14,SPL,Hydro Power,-2,EXIT,28.1,568.0,-1,live,1.0
+2026-11-14,SRLI,Life Insurance,0,HOLD,63.5,375.6,-1,live,1.0
+2026-11-14,SSHL,Hydro Power,0,HOLD,57.4,206.0,-1,live,1.0
+2026-11-14,STC,Tradings,0,HOLD,86.9,5650.0,-1,live,1.0
+2026-11-14,SWASTIK,Microfinance,-2,EXIT,21.7,1632.1,-1,live,1.0
+2026-11-14,SWBBL,Microfinance,0,HOLD,47.1,718.0,-1,live,1.0
+2026-11-14,SWMF,Microfinance,0,HOLD,65.7,611.0,-1,live,1.0
+2026-11-14,SYPNL,Manufacturing And Processing,-2,EXIT,33.0,1274.9,-1,live,1.0
+2026-11-14,TAMOR,Hydro Power,0,HOLD,88.8,592.1,-1,live,1.0
+2026-11-14,TPC,Hydro Power,0,HOLD,81.4,384.0,-1,live,1.0
+2026-11-14,TPKHL,Hydro Power,-1,REDUCE,33.2,422.0,-1,live,1.0
+2026-11-14,TRH,Hotels And Tourism,0,HOLD,46.6,834.0,-1,live,1.0
+2026-11-14,TSHL,Hydro Power,-2,EXIT,24.0,338.0,-1,live,1.0
+2026-11-14,TTL,Others,-2,EXIT,23.4,612.0,-1,live,1.0
+2026-11-14,TVCL,Hydro Power,-2,EXIT,25.8,288.0,-1,live,1.0
+2026-11-14,UAIL,Non Life Insurance,-2,EXIT,32.9,361.9,-1,live,1.0
+2026-11-14,UHEWA,Hydro Power,0,HOLD,72.7,593.3,-1,live,1.0
+2026-11-14,ULBSL,Microfinance,-2,EXIT,22.3,2532.0,-1,live,1.0
+2026-11-14,ULHC,Hydro Power,-1,REDUCE,32.3,321.0,-1,live,1.0
+2026-11-14,UMHL,Hydro Power,-1,REDUCE,46.7,557.6,-1,live,1.0
+2026-11-14,UMRH,Hydro Power,-1,REDUCE,43.1,509.1,-1,live,1.0
+2026-11-14,UNHPL,Hydro Power,-2,EXIT,31.0,356.0,-1,live,1.0
+2026-11-14,UNL,Manufacturing And Processing,0,HOLD,71.9,48600.0,-1,live,1.0
+2026-11-14,UNLB,Microfinance,-2,EXIT,30.7,1222.8,-1,live,1.0
+2026-11-14,UPCL,Hydro Power,-1,REDUCE,34.8,333.0,-1,live,1.0
+2026-11-14,UPPER,Hydro Power,0,HOLD,54.5,193.0,-1,live,1.0
+2026-11-14,USHEC,Hydro Power,0,HOLD,81.7,527.1,-1,live,1.0
+2026-11-14,USHL,Hydro Power,-2,EXIT,36.9,512.0,-1,live,1.0
+2026-11-14,USLB,Microfinance,-2,EXIT,15.4,977.0,-1,live,1.0
+2026-11-14,VLBS,Microfinance,0,HOLD,45.4,623.0,-1,live,1.0
+2026-11-14,VLUCL,Hydro Power,-2,EXIT,32.5,377.0,-1,live,1.0
+2026-11-14,YMHL,Hydro Power,-1,REDUCE,29.5,445.9,-1,live,1.0

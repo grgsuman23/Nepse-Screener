@@ -1,0 +1,282 @@
+symbol,name,sector,instrument,status,security_id
+NABIL,Nabil Bank Limited,Commercial Banks,Equity,A,131
+NIMB,Nepal Investment Mega Bank Limited,Commercial Banks,Equity,A,132
+SCB,Standard Chartered Bank Limited,Commercial Banks,Equity,A,133
+HBL,Himalayan Bank Limited,Commercial Banks,Equity,A,134
+SBI,Nepal SBI Bank Limited,Commercial Banks,Equity,A,135
+EBL,Everest Bank Limited,Commercial Banks,Equity,A,137
+NICA,NIC Asia Bank Ltd.,Commercial Banks,Equity,A,139
+MBL,Machhapuchhre Bank Limited,Commercial Banks,Equity,A,140
+LSL,Laxmi Sunrise Bank Limited,Commercial Banks,Equity,A,141
+KBL,Kumari Bank Limited,Commercial Banks,Equity,A,142
+SBL,Siddhartha Bank Limited,Commercial Banks,Equity,A,145
+SHL,Soaltee Hotel Limited,Hotels And Tourism,Equity,A,147
+TRH,Taragaon Regency Hotel Limited,Hotels And Tourism,Equity,A,148
+OHL,Oriental Hotels Limited,Hotels And Tourism,Equity,A,149
+NHPC,National Hydro Power Company Limited,Hydro Power,Equity,A,152
+BPCL,Butwal Power Company Limited,Hydro Power,Equity,A,153
+CHCL,Chilime Hydropower Company Limited,Hydro Power,Equity,A,154
+STC,Salt Trading Corporation,Tradings,Equity,A,155
+BBC,Bishal Bazar Company Limited,Tradings,Equity,A,156
+NUBL,Nirdhan Utthan Laghubitta Bittiya Sanstha Limited,Microfinance,Equity,A,163
+CBBL,Chhimek Laghubitta Bittiya Sanstha Limited,Microfinance,Equity,A,164
+DDBL,Deprosc Laghubitta Bittiya Sanstha Limited,Microfinance,Equity,A,166
+SANIMA,Sanima Bank Limited,Commercial Banks,Equity,A,171
+NABBC,Narayani Development Bank Limited,Development Banks,Equity,A,172
+NICL,Nepal Insurance Co. Ltd.,Non Life Insurance,Equity,A,176
+RBCL,Rastriya Beema Company Limited,Non Life Insurance,Equity,A,177
+NLICL,National Life Insurance Co. Ltd.,Life Insurance,Equity,A,178
+HEI,Himalayan Everest Insurance Limited,Non Life Insurance,Equity,A,179
+UAIL,United Ajod Insurance Limited,Non Life Insurance,Equity,A,180
+SPIL,Siddhartha Premier Insurance Limited,Non Life Insurance,Equity,A,182
+NIL,Neco Insurance Limited,Non Life Insurance,Equity,A,183
+PRIN,Prabhu Insurance Ltd.,Non Life Insurance,Equity,A,184
+SALICO,Sagarmatha Lumbini Insurance Co. Limited,Non Life Insurance,Equity,A,185
+IGI,IGI Prudential insurance Limited,Non Life Insurance,Equity,A,186
+NLIC,Nepal Life Insurance Co. Ltd.,Life Insurance,Equity,A,187
+LICN,Life Insurance Corporation (Nepal) Limited,Life Insurance,Equity,A,188
+SICL,Shikhar Insurance Co. Ltd.,Non Life Insurance,Equity,A,192
+NFS,Nepal Finance Ltd.,Finance,Equity,A,194
+BNL,Bottlers Nepal (Balaju) Limited,Manufacturing And Processing,Equity,A,195
+NLO,Nepal Lube Oil Limited,Manufacturing And Processing,Equity,A,198
+GUFL,Gurkhas Finance Ltd.,Finance,Equity,A,204
+CIT,Citizen Investment Trust,Investment,Equity,A,210
+BNT,Bottlers Nepal (Terai) Limited,Manufacturing And Processing,Equity,A,213
+UNL,Unilever Nepal Limited,Manufacturing And Processing,Equity,A,219
+BFC,Best Finance Company Ltd.,Finance,Equity,A,227
+GFCL,Goodwill Finance Limited,Finance,Equity,A,232
+HDL,Himalayan Distillery Limited,Manufacturing And Processing,Equity,A,235
+PFL,Pokhara Finance Ltd.,Finance,Equity,A,236
+NMB,NMB Bank Limited,Commercial Banks,Equity,A,238
+SIFC,Shree Investment Finance Co. Ltd.,Finance,Equity,A,244
+CFCL,Central Finance Co. Ltd.,Finance,Equity,A,245
+JFL,Janaki Finance Company Limited,Finance,Equity,A,250
+PRVU,Prabhu  Bank Limited,Commercial Banks,Equity,A,255
+GMFIL,Guheshowori Merchant Bank & Finance Co. Ltd.,Finance,Equity,A,263
+SWBBL,Swabalamban Laghubitta Bittiya Sanstha Limited,Microfinance,Equity,A,268
+ICFC,ICFC Finance Limited,Finance,Equity,A,273
+EDBL,Excel Development Bank Ltd.,Development Banks,Equity,A,274
+NTC,Nepal Doorsanchar Company Limited,Others,Equity,A,307
+PROFL,Progressive Finance Limited,Finance,Equity,A,338
+GBIME,Global IME Bank Limited,Commercial Banks,Equity,A,341
+CZBIL,Citizens Bank International Limited,Commercial Banks,Equity,A,348
+PCBL,Prime Commercial Bank Ltd.,Commercial Banks,Equity,A,357
+LBBL,Lumbini Bikas Bank Ltd.,Development Banks,Equity,A,358
+AHPC,Arun Valley Hydropower Development Co. Ltd.,Hydro Power,Equity,A,360
+MDB,Miteri Development Bank Limited,Development Banks,Equity,A,371
+ALICL,Asian Life Insurance Co. Limited,Life Insurance,Equity,A,385
+HLI,Himalayan Life Insurance Limited,Life Insurance,Equity,A,393
+NMLBBL,Nerude Mirmire Laghubitta Bittiya Sanstha Limited,Microfinance,Equity,A,396
+ADBL,Agricultural Development Bank Limited,Commercial Banks,Equity,A,397
+MLBL,Mahalaxmi Bikas Bank Ltd.,Development Banks,Equity,A,401
+SJLIC,SuryaJyoti Life Insurance Company Limited,Life Insurance,Equity,A,403
+GBBL,Garima Bikas Bank Limited,Development Banks,Equity,A,417
+JBBL,Jyoti Bikas Bank Limited,Development Banks,Equity,A,418
+CORBL,Corporate Development Bank Limited,Development Banks,Equity,A,450
+KSBBL,Kamana Sewa Bikas Bank Limited,Development Banks,Equity,A,459
+MPFL,Multipurpose Finance Company  Limited,Finance,Equity,A,471
+SADBL,Shangrila Development Bank Ltd.,Development Banks,Equity,A,472
+SHINE,Shine Resunga Development Bank Ltd.,Development Banks,Equity,A,473
+MNBBL,Muktinath Bikas Bank Ltd.,Development Banks,Equity,A,474
+FMDBL,First Micro Finance Laghubitta Bittiya Sanstha Limited,Microfinance,Equity,A,490
+MFIL,Manjushree Finance Ltd.,Finance,Equity,A,516
+NBL,Nepal Bank Limited,Commercial Banks,Equity,A,517
+SLBBL,Swarojgar Laghubitta Bittiya Sanstha Ltd.,Microfinance,Equity,A,545
+NLG,NLG Insurance Company Ltd.,Non Life Insurance,Equity,A,559
+SINDU,Sindhu Bikash Bank Ltd,Development Banks,Equity,A,561
+SKBBL,Sana Kisan Bikas Laghubitta Bittiya Sanstha Limited,Microfinance,Equity,A,574
+GBLBS,Grameen Bikas Laghubitta Bittiya Sanstha Ltd.,Microfinance,Equity,A,583
+RLFL,Reliance Finance Ltd.,Finance,Equity,A,587
+SHPC,Sanima Mai Hydropower Ltd.,Hydro Power,Equity,A,591
+KMCDB,Kalika Laghubitta Bittiya Sanstha Ltd,Microfinance,Equity,A,593
+MLBBL,Mithila LaghuBitta Bittiya Sanstha Limited,Microfinance,Equity,A,601
+RIDI,Ridi Power Company Limited,Hydro Power,Equity,A,610
+LLBS,Laxmi Laghubitta Bittiya Sanstha Ltd.,Microfinance,Equity,A,618
+BARUN,Barun Hydropower Co. Ltd.,Hydro Power,Equity,A,686
+VLBS,Vijaya laghubitta Bittiya Sanstha Ltd.,Microfinance,Equity,A,687
+HLBSL,Himalayan Laghubitta Bittiya Sanstha Limited,Microfinance,Equity,A,693
+MATRI,Matribhumi Lagubitta Bittiya Sanstha Limited,Microfinance,Equity,A,694
+JSLBB,Janautthan Samudayic Laghubitta Bittya Sanstha Limited,Microfinance,Equity,A,695
+API,Api Power Company Ltd.,Hydro Power,Equity,A,697
+NMBMF,NMB  Microfinance Bittiya Sanstha Ltd.,Microfinance,Equity,A,704
+GILB,Global IME Laghubitta Bittiya Sanstha Ltd.,Microfinance,Equity,A,705
+SWMF,Suryodaya Womi Laghubitta Bittiya Sanstha Limited,Microfinance,Equity,A,706
+MERO,Mero Microfinance Bittiya Sanstha Ltd.,Microfinance,Equity,A,1741
+HIDCL,Hydorelectricity Investment and Development Company Ltd,Investment,Equity,A,2742
+NGPL,Ngadi Group Power Ltd.,Hydro Power,Equity,A,2743
+GRDBL,Green Development Bank Ltd.,Development Banks,Equity,A,2744
+NMFBS,National Laghubitta Bittiya Sanstha Limited,Microfinance,Equity,A,2746
+RSDC,RSDC Laghubitta Bittiya Sanstha Ltd.,Microfinance,Equity,A,2748
+KKHC,Khanikhola Hydropower Co. Ltd.,Hydro Power,Equity,A,2751
+DHPL,Dibyashwori Hydropower Ltd.,Hydro Power,Equity,A,2754
+AKPL,Arun Kabeli Power Ltd.,Hydro Power,Equity,A,2757
+FOWAD,Forward Microfinance Laghubitta Bittiya Sanstha Limited,Microfinance,Equity,A,2758
+SPDL,Synergy Power Development Ltd.,Hydro Power,Equity,A,2759
+UMHL,United Modi Hydropower Ltd.,Hydro Power,Equity,A,2760
+SMATA,Samata Gharelu Laghubitta Bittiya Sanstha Limited,Microfinance,Equity,A,2761
+CHL,Chhyangdi Hydropower Ltd.,Hydro Power,Equity,A,2766
+HPPL,Himalayan Power Partner Ltd.,Hydro Power,Equity,A,2767
+MSLB,Mahuli Laghubitta Bittiya Sanstha Limited,Microfinance,Equity,A,2768
+NHDL,Nepal Hydro Developers Ltd.,Hydro Power,Equity,A,2769
+SMB,Support Microfinance Bittiya Sanstha Ltd.,Microfinance,Equity,A,2771
+USLB,Unnati Sahakarya Laghubitta Bittiya Sanstha Limited,Microfinance,Equity,A,2774
+RADHI,Radhi Bidyut Company Ltd,Hydro Power,Equity,A,2776
+NADEP,Nadep Laghubittiya bittya Sanstha Ltd.,Microfinance,Equity,A,2784
+PMHPL,Panchakanya Mai Hydropower Ltd,Hydro Power,Equity,A,2786
+KPCL,Kalika power Company Ltd,Hydro Power,Equity,A,2787
+AKJCL,Ankhu Khola Jalvidhyut Company Ltd,Hydro Power,Equity,A,2788
+JOSHI,Joshi Hydropower Development Company Ltd,Hydro Power,Equity,A,2789
+ACLBSL,Aarambha Chautari Laghubitta Bittiya Sanstha Limited,Microfinance,Equity,A,2790
+UPPER,Upper Tamakoshi Hydropower Ltd,Hydro Power,Equity,A,2792
+SLBSL,Samudayik Laghubitta Bittiya Sanstha Limited,Microfinance,Equity,A,2804
+GHL,Ghalemdi Hydro Limited,Hydro Power,Equity,A,2806
+ALBSL,Asha Laghubitta Bittiya Sanstha Ltd,Microfinance,Equity,A,2807
+SHIVM,SHIVAM CEMENTS LTD,Manufacturing And Processing,Equity,A,2809
+UPCL,UNIVERSAL POWER COMPANY LTD,Hydro Power,Equity,A,2810
+MHNL,Mountain Hydro Nepal Limited,Hydro Power,Equity,A,2811
+PPCL,Panchthar Power Compant Limited,Hydro Power,Equity,A,2813
+GMFBS,Ganapati Laghubitta Bittiya Sanstha Limited,Microfinance,Equity,A,2815
+HURJA,Himalaya Urja Bikas Company Limited,Hydro Power,Equity,A,2824
+GLBSL,Gurans Laghubitta Bittiya Sanstha Limited,Microfinance,Equity,A,2826
+SMFBS,Swabhimaan Laghubitta Bittiya Sanstha Limited,Microfinance,Equity,A,2829
+UNHPL,Union Hydropower Limited,Hydro Power,Equity,A,2831
+ILBS,Infinity Laghubitta Bittiya Sanstha Limited,Microfinance,Equity,A,2832
+RHPL,RASUWAGADHI HYDROPOWER COMPANY LIMITED,Hydro Power,Equity,A,2841
+SJCL,SANJEN JALAVIDHYUT COMPANY LIMITED,Hydro Power,Equity,A,2842
+SAPDBL,Saptakoshi Development Bank Ltd,Development Banks,Equity,A,2860
+HDHPC,Himal Dolakha Hydropower Company Limited,Hydro Power,Equity,A,2880
+NRIC,Nepal Reinsurance Company Limited,Others,Equity,A,2881
+NICLBSL,NIC ASIA Laghubitta Bittiya Sanstha Limited,Microfinance,Equity,A,2887
+SMPDA,Sampada Laghubitta Bittiya Sanstha Limited,Microfinance,Equity,A,2896
+NRN,NRN Infrastructure and Development Limited,Investment,Equity,A,2898
+LEC,Liberty Energy Company Limited,Hydro Power,Equity,A,2903
+SSHL,Shiva Shree Hydropower Ltd,Hydro Power,Equity,A,2907
+SGIC,Sanima GIC Insurance Limited,Non Life Insurance,Equity,A,2908
+MEN,Mountain Energy Nepal Limited,Hydro Power,Equity,A,2913
+UMRH,United IDI Mardi RB Hydropower Limited.,Hydro Power,Equity,A,2914
+PMLI,Prabhu Mahalaxmi Life Insurance Limited,Life Insurance,Equity,A,2915
+CGH,Chandragiri Hills Limited,Hotels And Tourism,Equity,A,2917
+NIFRA,Nepal Infrastructure Bank Limited,Investment,Equity,A,2919
+GLH,GreenLife Hydropower Limited,Hydro Power,Equity,A,2924
+MLBSL,Mahila Lagubitta Bittiya Sanstha Limited ,Microfinance,Equity,A,2925
+SHEL,Singati Hydro Energy Limited,Hydro Power,Equity,A,2934
+RURU,Ru Ru Jalbidhyut Pariyojana Limited,Hydro Power,Equity,A,2935
+CHDC,CEDB Holdings Limited,Investment,Equity,A,3946
+JBLB,Jeevan Bikas Laghubitta  Bittya Sanstha Ltd,Microfinance,Equity,A,4951
+SRLI,Sanima Reliance Life Insurance Limited,Life Insurance,Equity,A,5982
+MKJC,Mailung Khola Jal Vidhyut Company Limited,Hydro Power,Equity,A,8005
+MLBS,Manushi Laghubitta Bittiya Sanstha Limited,Microfinance,Equity,A,8018
+SAHAS,Sahas Urja Limited,Hydro Power,Equity,A,8021
+TPC,Terhathum Power Company Limited,Hydro Power,Equity,A,8022
+SPC,Samling Power Company Limited,Hydro Power,Equity,A,8025
+NYADI,Nyadi Hydropower Limited,Hydro Power,Equity,A,8026
+MBJC,Madhya Bhotekoshi Jalavidyut Company Limited,Hydro Power,Equity,A,8031
+BNHC,Buddha Bhumi Nepal Hydropower Company Limited,Hydro Power,Equity,A,8032
+ENL,Emerging Nepal Limited,Investment,Equity,A,8034
+NESDO,NESDO Sambridha Laghubitta Bittiya Sanstha Limited,Microfinance,Equity,A,8041
+GVL,Green Ventures Limited,Hydro Power,Equity,A,8045
+BHL,Balephi Hydropower Limited,Hydro Power,Equity,A,8055
+ULBSL,Upakar Laghubitta Bittiya Sanstha Limited,Microfinance,Equity,A,8063
+CYCL,CYC Nepal Laghubitta Bittiya Sanstha Limited,Microfinance,Equity,A,8065
+RFPL,River Falls Power Limited,Hydro Power,Equity,A,8066
+DORDI,Dordi Khola Jal Bidyut Company Limited,Hydro Power,Equity,A,8070
+BHDC,Bindhyabasini Hydropower Development Company Limited,Hydro Power,Equity,A,8075
+HHL,Himalayan Hydropower Limited,Hydro Power,Equity,A,8076
+UHEWA,Upper Hewakhola Hydropower Company Limited,Hydro Power,Equity,A,8099
+SGHC,Swet-Ganga Hydropower & Construction Limited ,Hydro Power,Equity,A,8100
+MHL,Mandakini Hydropower Limited,Hydro Power,Equity,A,8102
+USHEC,Upper Solu Hydro Electric Company Limited,Hydro Power,Equity,A,8104
+RHGCL,Rapti Hydro And General Construction Limited,Hydro Power,Equity,A,8108
+AVYAN,Aviyan Laghubitta Bittiya Sanstha Limited,Microfinance,Equity,A,8117
+SPHL,Sayapatri Hydropower Limited,Hydro Power,Equity,A,8121
+PPL,People's Power Limited,Hydro Power,Equity,A,8122
+DLBS,Dhaulagiri Laghubitta Bittiya Sanstha Limited,Microfinance,Equity,A,8123
+SIKLES,Sikles Hydropower Limited,Hydro Power,Equity,A,8126
+EHPL,Eastern Hydropower Limited,Hydro Power,Equity,A,8131
+SHLB,Shrijanshil Laghubitta Bittiya Sanstha Limited,Microfinance,Equity,A,8132
+PHCL,Peoples Hydropower Company Limited,Hydro Power,Equity,A,8133
+BHPL,Barahi Hydropower Public Limited,Hydro Power,Equity,A,9135
+UNLB,Unique Nepal Laghubitta Bittiya Sanstha Limited,Microfinance,Equity,A,9140
+SMHL,Super Madi Hydropower Limited,Hydro Power,Equity,A,9146
+SPL,Shuvam Power Limited,Hydro Power,Equity,A,9147
+SMH,Super Mai Hydropower Limited,Hydro Power,Equity,A,9148
+MKHC,Maya Khola Hydropower Company Limited,Hydro Power,Equity,A,9149
+AHL,Asian Hydropower Limited,Hydro Power,Equity,A,9150
+KDL,Kalinchowk Darshan Limited,Hotels And Tourism,Equity,A,9151
+TAMOR,Sanima Middle Tamor Hydropower Limited,Hydro Power,Equity,A,9156
+MHCL,Molung Hydropower Company Limited,Hydro Power,Equity,A,9158
+SMJC,Sagarmatha Jalabidhyut Company Limited,Hydro Power,Equity,A,9159
+ANLB,Aatmanirbhar Laghubitta Bittiya Sanstha Limited,Microfinance,Equity,A,9161
+MAKAR,Makar Jitumaya Suri Hydropower Limited,Hydro Power,Equity,A,9166
+MKHL,Mai Khola Hydropower Limited,Hydro Power,Equity,A,9167
+DOLTI,Dolti Power Company Limited,Hydro Power,Equity,A,9170
+BEDC,Bhugol Energy Development Company Limited,Hydro Power,Equity,A,9171
+CITY,City Hotel Limited,Hotels And Tourism,Equity,A,9173
+MCHL,Menchhiyam Hydropower Limited,Hydro Power,Equity,A,9175
+IHL,Ingwa Hydropower Limited,Hydro Power,Equity,A,9176
+MEL,Modi Energy Limited,Hydro Power,Equity,A,9179
+RAWA,Rawa Energy Development Limited,Hydro Power,Equity,A,9181
+NRM,Nepal Republic Media Limited,Others,Equity,A,9183
+ILI,IME Life Insurance Company Limited,Life Insurance,Equity,A,9184
+USHL,Upper Syange Hydropower Limited,Hydro Power,Equity,A,9192
+GCIL,Ghorahi Cement Industry Limited,Manufacturing And Processing,Equity,A,9193
+TSHL,Three Star Hydropower Limited,Hydro Power,Equity,A,9194
+KBSH,Kutheli Bukhari Small Hydropower Limited,Hydro Power,Equity,A,9196
+RNLI,Reliable Nepal Life Insurance Limited,Life Insurance,Equity,A,9199
+SNLI,Sun Nepal Life Insurance Company Limited,Life Insurance,Equity,A,9201
+MEHL,Manakamana Engineering Hydropower Limited,Hydro Power,Equity,A,9203
+ULHC,Upper Lohore Khola Hydropower Company Limited,Hydro Power,Equity,A,9208
+CLI,Citizen Life Insurance Company Limited,Life Insurance,Equity,A,9209
+MANDU,Mandu Hydropower Limited,Hydro Power,Equity,A,9212
+HATHY,Hathway Investment Nepal Limited,Investment,Equity,A,9213
+BGWT,Bhagawati Hydropower Development Company Limited,Hydro Power,Equity,A,9214
+MSHL,Mid Solu Hydropower Limited,Hydro Power,Equity,A,9215
+SONA,Sonapur Minerals And Oil Limited,Manufacturing And Processing,Equity,A,9216
+MMKJL,Mathillo Mailun Khola Jalvidhyut Limited,Hydro Power,Equity,A,9217
+TVCL,Trishuli Jal Vidhyut Company Limited ,Hydro Power,Equity,A,9218
+VLUCL,Vision Lumbini Urja Company Limited ,Hydro Power,Equity,A,9225
+MKCL,Muktinath Krishi Company Limited,Others,Equity,A,9230
+CKHL,Chirkhwa Hydropower Limited ,Hydro Power,Equity,A,9232
+NWCL,Nepal Warehousing Company Limited ,Others,Equity,A,9233
+HRL,Himalayan Reinsurance Limited,Others,Equity,A,9234
+SARBTM,Sarbottam Cement Limited,Manufacturing And Processing,Equity,A,9242
+GMLI,Guardian Micro Life Insurance Limited ,Life Insurance,Equity,A,9246
+NMIC,Nepal Micro Insurance Company Limited,Non Life Insurance,Equity,A,9250
+CREST,Crest Micro Life Insurance Limited,Life Insurance,Equity,A,9252
+OMPL,Om Megashree Pharmaceuticals Limited,Manufacturing And Processing,Equity,A,9256
+PURE,Pure Energy Limited,Others,Equity,A,9258
+TTL,Trade Tower Limited,Others,Equity,A,9262
+SANVI,Sanvi Energy Limited,Hydro Power,Equity,A,9263
+BHCL,Bikash Hydropower Company Limited,Hydro Power,Equity,A,9267
+HIMSTAR,Him Star Urja Company Limited,Hydro Power,Equity,A,9270
+MABEL,Mabilung Energy Limited,Hydro Power,Equity,A,9287
+DHEL,Daramkhola Hydro Energy Limited,Hydro Power,Equity,A,9293
+SAGAR,Sagar Distillery Limited,Manufacturing And Processing,Equity,A,9294
+SWASTIK,Swastik Laghubitta Bittiya Sanstha Limited,Microfinance,Equity,A,9295
+BUNGAL,Bungal Hydro Limited,Hydro Power,Equity,A,9296
+BANDIPUR,Bandipur Cablecar and Tourism Limited,Hotels And Tourism,Equity,A,9297
+JHAPA,Jhapa Energy Limited,Others,Equity,A,9300
+SAIL,Shreenagar Agritech Industries Limited,Manufacturing And Processing,Equity,A,9301
+SYPNL,SY Panel Nepal Limited,Manufacturing And Processing,Equity,A,9303
+SABBL,Salapa Bikas Bank Limited,Development Banks,Equity,A,9305
+RSML,Reliance Spinning Mills Limited,Manufacturing And Processing,Equity,A,9306
+HFIN,Hotel Forest Inn Limited,Hotels And Tourism,Equity,A,9308
+SOHL,Solu Hydropower Limited,Hydro Power,Equity,A,9311
+BJHL,Bhujung Hydropower Limited,Hydro Power,Equity,A,9322
+SKHL,Super Khudi Hydropower Limited,Hydro Power,Equity,A,9323
+RLEL,Ridge Line Energy Limited,Hydro Power,Equity,A,9324
+SKHEL,Suryakunda Hydro Electric Limited,Hydro Power,Equity,A,9325
+SIPD,Shikhar power Development Limited,Hydro Power,Equity,A,9329
+PCIL,Palpa Cement Industries Limited,Manufacturing And Processing,Equity,A,9330
+KHPL,Kalinchock Hydropower Limited,Hydro Power,Equity,A,9334
+SOPL,Sopan Pharmaceuticals Limited,Manufacturing And Processing,Equity,A,9336
+APHL,Appolo Hydropower Limited,Hydro Power,Equity,A,9337
+YMHL,Yambaling Hydropower Limited,Hydro Power,Equity,A,9342
+TPKHL,Taksar Pikhuwa Khola Hydropower Limited,Hydro Power,Equity,A,9343
+SNORL,Snow Rivers Limited,Hydro Power,Equity,A,9344
+SGHL,Sanigad Hydro Limited,Hydro Power,Equity,A,9345
+KAHL,Kalanga Hydro Limited,Hydro Power,Equity,A,9346
+ECL,Everest Colour Limited,Manufacturing And Processing,Equity,A,9347
+MEPDL,Mount Everest Power Development Limited,Hydro Power,Equity,A,9352
+SAPIL,Sarvottam Paints Industries Limited,Manufacturing And Processing,Equity,A,9353
+BENH,Beni Hydropower Project Limited,Hydro Power,Equity,A,9356
