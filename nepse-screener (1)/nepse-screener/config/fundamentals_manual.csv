@@ -1,4 +1,0 @@
-# Optional manual overrides / extra fundamentals (e.g. from NRB or quarterly reports).
-# Values here replace scraped ones. Leave cells blank to keep the scraped value.
-# npl and car as fractions (3% = 0.03). roe in % or fraction.
-symbol,npl,car,roe,eps,bvps,div_pct
