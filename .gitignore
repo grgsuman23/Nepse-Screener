@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+demo/
+# never commit your real holdings — use the PORTFOLIO_CSV secret or the dashboard instead
+portfolio.csv
+my_portfolio*.csv
+*.local.*
