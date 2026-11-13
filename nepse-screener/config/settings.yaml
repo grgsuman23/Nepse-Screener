@@ -1,0 +1,133 @@
+# =====================================================================
+#  NEPSE Screener — main settings
+#  Edit these values directly on GitHub (pencil icon) — the next
+#  scheduled run will pick them up automatically.
+# =====================================================================
+
+data:
+  history_start: "2019-01-01"        # backfill start date (YYYY-MM-DD)
+  # Order in which price-history sources are tried during backfill.
+  #   merolagani  -> bonus/right ADJUSTED history (preferred for indicators)
+  #   nepse_api   -> official nepalstock.com data (unadjusted; auto-adjusted here)
+  history_sources: [merolagani, nepse_api]
+  # Order in which sources are tried for the daily end-of-day update.
+  daily_sources: [nepse_api, merolagani_latest, merolagani]
+  # Order for fundamentals (EPS, P/E, Book value, dividend...).
+  fundamental_sources: [merolagani, sharesansar]
+  request_delay_sec: 0.7             # politeness delay between web requests
+  request_timeout_sec: 25
+  # Sectors that are NOT ordinary equity and are excluded from the screener
+  exclude_sectors:
+    - Mutual Fund
+    - Corporate Debenture
+    - Corporate Debentures
+    - Government Bonds
+    - Promoter Share
+    - Preference Share
+  exclude_symbol_patterns: ["^.*PO$", "^.*D\\d{2,4}$", "^.*PR$"]   # promoter / debenture style tickers
+  min_history_days: 60               # stocks with less history are listed but not scored
+  corporate_action_threshold: -0.11  # one-day drop beyond the 10% circuit => treated as bonus/right adjustment
+
+market:
+  face_value: 100                    # NPR face value used for dividend-yield maths
+  circuit_limit: 0.10                # NEPSE daily price band (±10%)
+  settlement_days: 2                 # T+2
+  min_lot: 10                        # minimum regular-market order (kitta)
+  trading_days_per_year: 230         # NEPSE trades Sun–Thu, minus holidays
+
+liquidity:
+  min_avg_turnover: 2000000          # NPR 20-day average turnover to be "liquid"
+  max_pct_of_volume: 0.10            # backtest: max share of a day's volume we can trade
+
+# ---------------------------------------------------------------------
+#  Trading costs & tax (verify with your broker; SEBON revises these)
+#  Commission tiers: [upper_limit_npr, rate]; null = no upper limit
+# ---------------------------------------------------------------------
+costs:
+  broker_commission_tiers:
+    - [50000, 0.0036]
+    - [500000, 0.0033]
+    - [2000000, 0.0031]
+    - [10000000, 0.0027]
+    - [null, 0.0024]
+  min_commission: 10
+  sebon_fee: 0.00015                 # 0.015% on buy and sell
+  dp_charge: 25                      # per scrip, per sell day
+  # Capital gains tax for resident individuals, listed shares
+  # (gazetted 22 Sept 2026: 3.75% if held > 365 days, 5% otherwise)
+  cgt_long_term: 0.0375
+  cgt_short_term: 0.05
+  long_term_days: 365
+
+regime:
+  # Market regime drives "no new buys in a bear market" logic
+  index_symbol: NEPSE
+  fast_ma: 50
+  slow_ma: 200
+  breadth_bull: 0.55                 # share of stocks above their 50-DMA
+  breadth_bear: 0.35
+
+# ---------------------------------------------------------------------
+#  Composite score (0–100) = weighted blend of factor scores.
+#  Missing factors (e.g. no fundamentals yet) are re-weighted away.
+# ---------------------------------------------------------------------
+scoring:
+  weights:
+    trend: 0.22
+    momentum: 0.18
+    volume: 0.08
+    timing: 0.05
+    sector: 0.10
+    value: 0.17
+    quality: 0.15
+    liquidity: 0.05
+  stance_thresholds:
+    strong_buy: 75
+    buy: 62
+    reduce: 40
+    exit: 28
+  overbought_rsi: 80
+  overextended_pct_above_ema50: 0.25
+
+portfolio:
+  atr_stop_multiple: 3.0             # trailing stop = highest close since buy − k × ATR
+  hard_stop_pct: 0.15                # max loss from WACC before forced EXIT review
+  max_position_weight: 0.20
+  max_sector_weight: 0.40
+  reduce_fraction: 0.5               # how much to sell on a REDUCE call
+  tax_wait_window_days: 30           # suggest waiting if long-term CGT is this close
+  bear_market_cash_target: 0.40
+
+backtest:
+  initial_capital: 1000000
+  execution: next_open               # next_open | next_close
+  # fundamentals_mode:
+  #   point_in_time   -> only use fundamentals known on that date (honest; needs history)
+  #   current_backfill-> apply today's EPS/BVPS to the past (optimistic, flagged)
+  #   auto            -> point_in_time once >= 1 year of snapshots exist
+  fundamentals_mode: auto
+  risk_free_rate: 0.05
+  start: "2020-01-01"
+  end: null
+
+optimize:
+  train_fraction: 0.7
+  objective: calmar                  # calmar | sharpe | cagr
+  max_combinations: 60
+
+tracking:
+  horizons: [5, 20, 60]              # trading days after a call to evaluate it
+  simulated_history_days: 750        # build a simulated track record over this window
+  model_version: "1.0"
+  # Your portfolio's own action log reveals what you hold. Keep this false
+  # unless the GitHub repository is PRIVATE. (Model calls for every stock —
+  # including the ones you hold — are always tracked.)
+  log_portfolio_actions: false
+
+export:
+  history_bars: 500                  # bars per stock written for dashboard charts
+  equity_curve_points: 400
+
+alerts:
+  enabled: true                      # needs GMAIL_USER / GMAIL_APP_PASSWORD / ALERT_TO secrets
+  subject_prefix: "[NEPSE Screener]"

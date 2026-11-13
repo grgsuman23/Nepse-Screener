@@ -1,0 +1,8 @@
+pandas>=2.2
+numpy>=1.26
+pyyaml>=6.0
+requests>=2.31
+beautifulsoup4>=4.12
+lxml>=5.0
+# Official NEPSE data (handles nepalstock.com's token scrambling)
+nepse @ git+https://github.com/basic-bgnr/NepseUnofficialApi
