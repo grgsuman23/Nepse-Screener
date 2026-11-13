@@ -1,0 +1,9 @@
+# Your own screens — they appear in the dashboard under "My screens".
+# Use any field from the README field reference.
+screens:
+  - id: my_pb_value
+    name: "Value: P/B below 1.5 with ROE above 10%"
+    expr: "pbv < 1.5 and roe > 0.10 and liquid == 1"
+  - id: my_hydro_breakout
+    name: "Hydro breakouts above 55-day high"
+    expr: "close > hh_55 and vol_ratio > 1.8 and sector_rs_rank > 50"
