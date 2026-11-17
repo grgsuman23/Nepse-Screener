@@ -10,8 +10,8 @@ from . import store
 from .config import Paths
 from .engine import Analysis
 from .indicators import INDICATOR_HELP
-from .market import REGIME_LABEL, quadrant
-from .scoring import STANCES, explain
+from .market import quadrant, regime_label
+from .scoring import CALLS, STANCES, call_label, explain
 from .utils import safe, write_json
 
 SCREENER_FIELDS = [
@@ -23,7 +23,8 @@ SCREENER_FIELDS = [
     "eps", "bvps", "pe", "pbv", "roe", "div_yield", "earnings_yield", "graham", "graham_discount",
     "pe_vs_sector", "pbv_vs_sector", "sector_pe_median", "sector_pbv_median", "mcap", "npl", "car", "bonus_pct",
     "score", "score_trend", "score_momentum", "score_volume", "score_timing", "score_sector", "score_value",
-    "score_quality", "score_liquidity", "stance_code", "bars",
+    "score_quality", "score_liquidity", "stance_code", "bars", "score_adj", "leader", "eff_regime", "sector_regime",
+    "pos_size", "stop_mult", "accumulate", "regime",
 ]
 HISTORY_FIELDS = {"o": "open", "h": "high", "l": "low", "c": "close", "v": "volume", "e20": "ema_20",
                   "e50": "ema_50", "s200": "sma_200", "rsi": "rsi_14", "macd": "macd", "sig": "macd_signal",
@@ -55,7 +56,7 @@ def export_all(a: Analysis, paths: Paths, cfg: dict, presets: list[dict], hits: 
             if f in r.index:
                 rec[f] = safe(r[f], 4)
         code = r.get("stance_code")
-        rec["stance"] = STANCES.get(int(code), "") if code == code and code is not None else "N/A"
+        rec["stance"] = call_label(code, r.get("accumulate")) if code == code and code is not None else "N/A"
         rec["reasons"] = explain(r.to_dict(), cfg)
         lt = r.get("last_traded")
         rec["last_traded"] = lt.strftime("%Y-%m-%d") if isinstance(lt, pd.Timestamp) else None
@@ -105,16 +106,19 @@ def export_all(a: Analysis, paths: Paths, cfg: dict, presets: list[dict], hits: 
     market = {
         "date": last.strftime("%Y-%m-%d"), "index_source": a.index_source,
         "index": safe(lr["index"]), "index_chg": safe(lr["index"] / prev["index"] - 1),
-        "regime": int(lr["regime"]), "regime_label": REGIME_LABEL[int(lr["regime"])],
+        "regime": float(lr["regime"]), "regime_label": regime_label(lr["regime"]),
+        "thrust_recent": bool(m["thrust"].iloc[-60:].any()) if "thrust" in m else False,
+        "regime_policy": (cfg.get("scoring", {}).get("regime_policy", {}) or {}).get("mode", "combined"),
         "breadth_50": safe(lr.get("breadth_50")), "breadth_200": safe(lr.get("breadth_200")),
         "advances": safe(lr.get("advances")), "declines": safe(lr.get("declines")),
         "new_highs": safe(lr.get("new_highs")), "new_lows": safe(lr.get("new_lows")),
         "ret_1m": safe(lr.get("mkt_ret_1m")), "ret_3m": safe(lr.get("mkt_ret_3m")), "ret_6m": safe(lr.get("mkt_ret_6m")),
         "turnover": safe(float(snap["turnover"].sum())) if "turnover" in snap else None,
-        "stance_counts": {STANCES[c]: int((snap["stance_code"] == c).sum()) for c in STANCES},
+        "stance_counts": {lab: int(sum(1 for c, acc in zip(snap["stance_code"], snap.get("accumulate", pd.Series(0, index=snap.index)))
+                                       if c == c and call_label(c, acc) == lab)) for lab in CALLS},
         "series": {"d": [x.strftime("%Y-%m-%d") for x in m.index], "index": _round_list(m["index"]),
                    "fast": _round_list(m["ema_fast"]), "slow": _round_list(m["sma_slow"]),
-                   "regime": [int(x) for x in m["regime"]], "b50": _round_list(m["breadth_50"], 3),
+                   "regime": [float(x) for x in m["regime"]], "b50": _round_list(m["breadth_50"], 3),
                    "b200": _round_list(m["breadth_200"], 3)},
         "gainers": top("chg_pct", False), "losers": top("chg_pct", True), "turnover_leaders": top("turnover", False),
         "volume_spikes": top("vol_ratio", False),
@@ -134,6 +138,7 @@ def export_all(a: Analysis, paths: Paths, cfg: dict, presets: list[dict], hits: 
             "ret_6m": safe(lr_["ret_6m"]), "ret_12m": safe(lr_["ret_12m"]), "rs_rank": safe(lr_["rs_rank"]),
             "rs_ratio": safe(lr_["rs_ratio"]), "rs_mom": safe(lr_["rs_mom"]),
             "quadrant": quadrant(lr_["rs_ratio"], lr_["rs_mom"]), "above_200": safe(lr_["above_200"]),
+            "regime": safe(lr_.get("regime")), "regime_label": regime_label(lr_.get("regime")),
             "median_pe": safe(members["pe"].median()) if "pe" in members else None,
             "median_pbv": safe(members["pbv"].median()) if "pbv" in members else None,
             "median_roe": safe(members["roe"].median()) if "roe" in members else None,

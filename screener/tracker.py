@@ -22,7 +22,7 @@ import pandas as pd
 
 from .config import Paths
 from .engine import Analysis
-from .scoring import STANCES
+from .scoring import STANCES, call_label
 from .utils import log
 
 REC_COLS = ["date", "symbol", "sector", "stance_code", "stance", "score", "close", "regime", "source", "model_version"]
@@ -46,9 +46,9 @@ def log_recommendations(a: Analysis, paths: Paths, cfg: dict) -> int:
     df = pd.DataFrame({
         "date": d, "symbol": snap.index, "sector": snap["sector"].values,
         "stance_code": snap["stance_code"].astype(int).values,
-        "stance": [STANCES.get(int(c), "HOLD") for c in snap["stance_code"]],
+        "stance": [call_label(c, acc) for c, acc in zip(snap["stance_code"], snap.get("accumulate", pd.Series(0, index=snap.index)))],
         "score": snap["score"].round(1).values, "close": snap["close"].round(2).values,
-        "regime": int(a.market["regime"].iloc[-1]), "source": "live",
+        "regime": float(a.market["regime"].iloc[-1]), "source": "live",
         "model_version": cfg.get("tracking", {}).get("model_version", "1.0"),
     })
     _append(paths.tracking / "recommendations.csv", df[REC_COLS], ["date", "symbol"])
@@ -115,7 +115,7 @@ def forward_returns(a: Analysis, calls: pd.DataFrame, horizons: list[int]) -> pd
 
 def _direction(label: str) -> int:
     lab = str(label).upper()
-    if lab in ("STRONG BUY", "BUY", "ADD", "ENTRY", "PICK"):
+    if lab in ("STRONG BUY", "BUY", "ACCUMULATE", "ADD", "ENTRY", "PICK"):
         return 1
     if lab in ("REDUCE", "EXIT"):
         return -1
@@ -143,7 +143,7 @@ def summarize(out: pd.DataFrame, label_col: str, horizons: list[int]) -> list[di
                 rec[f"hit_{h}"] = None
                 rec[f"abs_hit_{h}"] = None
         rows.append(rec)
-    order = {"STRONG BUY": 0, "BUY": 1, "ADD": 1, "PICK": 1, "ENTRY": 1, "HOLD": 2, "REDUCE": 3, "EXIT": 4}
+    order = {"STRONG BUY": 0, "BUY": 1, "ADD": 1, "PICK": 1, "ENTRY": 1, "ACCUMULATE": 2, "HOLD": 3, "REDUCE": 4, "EXIT": 5}
     rows.sort(key=lambda r: order.get(str(r["label"]).upper(), 9))
     return rows
 
@@ -193,6 +193,7 @@ def rolling_hit(out: pd.DataFrame, h: int) -> list[dict]:
 def simulated_calls(a: Analysis, days: int, step: int = 5) -> pd.DataFrame:
     """Rebuild what the model WOULD have said on past dates (every `step` sessions)."""
     sc, code = a.w["score"], a.w["stance_code"]
+    accw = a.w.get("accumulate")
     dates = a.dates[-days:][::step]
     frames = []
     for d in dates:
@@ -200,15 +201,16 @@ def simulated_calls(a: Analysis, days: int, step: int = 5) -> pd.DataFrame:
         m = s.notna() & c.notna()
         if not m.any():
             continue
+        acc = accw.loc[d][m].values if accw is not None else np.zeros(int(m.sum()))
         frames.append(pd.DataFrame({"date": d.strftime("%Y-%m-%d"), "symbol": s.index[m], "score": s[m].values,
-                                    "stance_code": c[m].astype(int).values}))
+                                    "stance_code": c[m].astype(int).values, "accumulate": acc}))
     if not frames:
         return pd.DataFrame(columns=["date", "symbol", "score", "stance_code", "stance", "sector", "regime"])
     df = pd.concat(frames, ignore_index=True)
-    df["stance"] = df["stance_code"].map(STANCES)
+    df["stance"] = [call_label(c, x) for c, x in zip(df["stance_code"], df["accumulate"])]
     df["sector"] = df["symbol"].map(a.sector_of)
     reg = a.market["regime"]
-    df["regime"] = pd.to_datetime(df["date"]).map(reg).astype("Int64")
+    df["regime"] = pd.to_datetime(df["date"]).map(reg).astype(float)
     return df
 
 

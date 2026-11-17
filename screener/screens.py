@@ -57,6 +57,12 @@ PRESETS = [
      "expr": "stance_code == 2"},
     {"id": "model_buy", "group": "Model", "name": "Model: BUY or better", "expr": "stance_code >= 1"},
     {"id": "model_exit", "group": "Model", "name": "Model: EXIT", "expr": "stance_code == -2"},
+    {"id": "model_accumulate", "group": "Model", "name": "Model: ACCUMULATE (value in a weak market)",
+     "expr": "accumulate == 1"},
+    {"id": "bear_leaders", "group": "Model", "name": "Market leaders (hold up best in a decline)",
+     "expr": "leader == 1"},
+    {"id": "sector_uptrend_vs_market", "group": "Model", "name": "Sector in uptrend while NEPSE is weak",
+     "expr": "sector_regime >= 1 and regime < 1 and close > ema_50 and liquid == 1"},
 ]
 
 

@@ -142,7 +142,7 @@ def build(cfg: dict, paths: Paths, prices: dict[str, pd.DataFrame] | None = None
                 sector_of[r["symbol"]] = r["sector"]
     for s in symbols:
         sector_of.setdefault(s, "Others")
-    w["sector_rs_rank"], sectors = mkt.sector_analysis(w["close"], sector_of, market["index"], liquid)
+    w["sector_rs_rank"], sectors, w["sector_regime"] = mkt.sector_analysis(w["close"], sector_of, market["index"], liquid)
 
     # --- fundamentals
     snaps = store.load_snapshots(paths)
@@ -164,7 +164,24 @@ def build(cfg: dict, paths: Paths, prices: dict[str, pd.DataFrame] | None = None
     score = scoring.composite(factors, cfg.get("scoring", {}).get("weights", {}))
     score = score.where(w["bars"] >= min_bars)
     w["score"] = score.round(1)
-    w["stance_code"] = scoring.stance(w, score, cfg)
+    # regime policy: the configured mode drives stance_code; every mode is also
+    # kept (stance_<mode>) so backtests can compare them on the same history
+    policy_mode = (cfg.get("scoring", {}).get("regime_policy", {}) or {}).get("mode", "combined")
+    for mode in scoring.MODES:
+        res = scoring.stance_policy(w, w["score"], cfg, mode)
+        w[f"stance_{mode}"] = res["code"]
+        if mode in ("sizing", "combined"):
+            w[f"pos_size_{mode}"] = res["size"]
+        if mode == "combined":
+            w["accumulate_combined"] = res["accumulate"]
+        if mode == policy_mode:
+            w["stance_code"] = res["code"]
+            w["score_adj"] = res["score_adj"]
+            w["leader"] = res["leader"]
+            w["eff_regime"] = res["eff_regime"]
+            w["pos_size"] = res["size"]
+            w["stop_mult"] = res["stop"]
+            w["accumulate"] = res["accumulate"]
 
     if start:
         s = pd.Timestamp(start) - pd.Timedelta(days=5)

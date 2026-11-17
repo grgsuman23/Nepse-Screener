@@ -15,6 +15,7 @@ import numpy as np
 import pandas as pd
 
 STANCES = {2: "STRONG BUY", 1: "BUY", 0: "HOLD", -1: "REDUCE", -2: "EXIT"}
+CALLS = ["STRONG BUY", "BUY", "ACCUMULATE", "HOLD", "REDUCE", "EXIT"]
 
 
 def _pct(df: pd.DataFrame, mask: pd.DataFrame | None = None) -> pd.DataFrame:
@@ -72,27 +73,108 @@ def composite(factors: dict[str, pd.DataFrame], weights: dict[str, float]) -> pd
     return (num / den.replace(0, np.nan)).clip(0, 100)
 
 
-def stance(w: dict[str, pd.DataFrame], score: pd.DataFrame, cfg: dict) -> pd.DataFrame:
+MODES = ("hard", "soft", "leaders", "sizing", "combined")
+
+
+def _by_regime(reg: pd.DataFrame, mapping: dict, default: float) -> pd.DataFrame:
+    """Map a numeric regime frame (1 bull, 0.5 recovery, 0 neutral, -1 bear) to per-regime values."""
+    v = reg.to_numpy(dtype=float)
+    g = lambda k: float(mapping.get(k, default))  # noqa: E731
+    out = np.select([v >= 1, (v > 0) & (v < 1), v < 0], [g("bull"), g("recovery"), g("bear")], g("neutral"))
+    out = np.where(np.isnan(v), g("neutral"), out)
+    return pd.DataFrame(out, index=reg.index, columns=reg.columns)
+
+
+def effective_regime(w: dict[str, pd.DataFrame], use_sector: bool) -> pd.DataFrame:
+    """Rule 4: judge a stock by its own sector's trend first.
+    Sector bull -> bull, sector bear -> bear; a neutral sector takes the better of
+    sector and market (so a NEPSE recovery lifts it)."""
+    mkt = w["regime"]
+    if not use_sector or "sector_regime" not in w:
+        return mkt
+    sec = w["sector_regime"]
+    out = np.where(sec >= 1, 1.0, np.where(sec <= -1, -1.0, np.maximum(sec.fillna(0), mkt)))
+    out = np.where(sec.isna(), mkt, out)
+    return pd.DataFrame(out, index=mkt.index, columns=mkt.columns)
+
+
+def stance_policy(w: dict[str, pd.DataFrame], score: pd.DataFrame, cfg: dict, mode: str | None = None) -> dict:
+    """Stance under a regime policy. Returns code, adjusted score, leader flag,
+    effective regime, suggested position size, stop multiple and accumulate flag."""
     sc = cfg.get("scoring", {})
+    rp = sc.get("regime_policy", {}) or {}
+    mode = mode or rp.get("mode", "combined")
     th = sc.get("stance_thresholds", {})
-    sb, buy, red, ex = th.get("strong_buy", 75), th.get("buy", 62), th.get("reduce", 40), th.get("exit", 28)
+    sb0, buy0, red, ex = th.get("strong_buy", 75), th.get("buy", 62), th.get("reduce", 40), th.get("exit", 28)
     ob = sc.get("overbought_rsi", 80)
     ovx = sc.get("overextended_pct_above_ema50", 0.25)
-    regime = w["regime"]
+    mkt = w["regime"]
     liquid = w["liquid"].astype(bool)
     close = w["close"]
     up = close > w["sma_200"]
-    code = pd.DataFrame(0, index=score.index, columns=score.columns, dtype=float)
-    code[(score >= buy) & up & liquid] = 1
-    code[(score >= sb) & up & (w["ema_50"] > w["sma_200"]) & liquid & (w["rsi_14"] < ob)] = 2
-    # bear market: no new buys
-    code[(code > 0) & (regime < 0)] = 0
-    reduce_ = (score < red) | ((close < w["ema_50"]) & (w["st_dir"] < 0)) | (
-        (w["rsi_14"] > ob) & (w["dist_ema50"] > ovx))
+    stack = w["ema_50"] > w["sma_200"]
+    base_stop = cfg.get("portfolio", {}).get("atr_stop_multiple", 3.0)
+
+    eff = effective_regime(w, rp.get("use_sector_regime", True)) if mode == "combined" else mkt
+    if mode in ("soft", "combined"):
+        adj = score + _by_regime(mkt, rp.get("score_adjust", {}), 0)
+        buy_th = _by_regime(eff, rp.get("buy_threshold", {}), buy0)
+        sb_th = _by_regime(eff, rp.get("strong_threshold", {}), sb0)
+    else:
+        adj, buy_th, sb_th = score, buy0, sb0
+    adj = adj.clip(0, 100)
+
+    leader = (w["rs_rating"] >= rp.get("leader_rs_min", 85)) & up & stack & liquid & \
+             (w["sector_rs_rank"] >= rp.get("leader_sector_rs_min", 70))
+
+    code = pd.DataFrame(0.0, index=score.index, columns=score.columns)
+    code[(adj >= buy_th) & up & liquid] = 1
+    code[(adj >= sb_th) & up & stack & liquid & (w["rsi_14"] < ob)] = 2
+    if mode == "hard":
+        code[(code > 0) & (mkt < 0)] = 0                        # original: no buys in a bear market
+    elif mode == "leaders":
+        code[(code > 0) & (mkt < 0) & ~leader] = 0              # bear: leaders only
+    elif mode == "combined":
+        code[(code > 0) & (eff < 0) & ~leader] = 0              # bear (sector-aware): leaders only
+    reduce_ = (score < red) | ((close < w["ema_50"]) & (w["st_dir"] < 0)) | ((w["rsi_14"] > ob) & (w["dist_ema50"] > ovx))
     code[reduce_] = -1
     exit_ = (score < ex) | ((close < w["sma_200"]) & (w["st_dir"] < 0) & (score < red))
     code[exit_] = -2
-    return code.where(score.notna())
+
+    if mode in ("sizing", "combined"):
+        size = _by_regime(eff, rp.get("position_size", {}), 1.0)
+        stop = _by_regime(eff, rp.get("stop_atr", {}), base_stop)
+    else:
+        size = pd.DataFrame(1.0, index=score.index, columns=score.columns)
+        stop = pd.DataFrame(float(base_stop), index=score.index, columns=score.columns)
+
+    acc = pd.DataFrame(False, index=score.index, columns=score.columns)
+    if mode == "combined" and rp.get("accumulate_enabled", True) and "score_value" in w:
+        npl_ok = w["npl"].isna() | (w["npl"] <= rp.get("accumulate_max_npl", 0.05)) if "npl" in w else True
+        mkt_ok = (mkt < 0) | ((mkt > 0) & (mkt < 1))           # bear or recovery
+        acc = (mkt_ok & (w["score_value"] >= rp.get("accumulate_value_min", 75)) & (w["eps"] > 0)
+               & (w["roe_pct_sector"] >= rp.get("accumulate_quality_pct_min", 0.5)) & npl_ok
+               & ((w["st_dir"] > 0) | (close > w["ema_50"])) & liquid & code.isin([0, -1]))
+        acc = acc.fillna(False).astype(bool)
+        code[acc] = 0
+        size = size.where(~acc, np.minimum(size, rp.get("accumulate_size", 0.25)))
+
+    valid = score.notna()
+    return {"code": code.where(valid), "score_adj": adj.where(valid).round(1), "leader": leader.astype(float),
+            "eff_regime": eff, "size": size, "stop": stop, "accumulate": acc.astype(float).where(valid, 0.0), "mode": mode}
+
+
+def stance(w: dict[str, pd.DataFrame], score: pd.DataFrame, cfg: dict) -> pd.DataFrame:
+    return stance_policy(w, score, cfg)["code"]
+
+
+def call_label(code, accumulate) -> str:
+    if accumulate and code == 0:
+        return "ACCUMULATE"
+    try:
+        return STANCES.get(int(code), "HOLD")
+    except (TypeError, ValueError):
+        return "N/A"
 
 
 def explain(row: dict, cfg: dict) -> list[str]:
@@ -129,8 +211,45 @@ def explain(row: dict, cfg: dict) -> list[str]:
         r.append(f"ROE {g('roe') * 100:.1f}%")
     if g("div_yield") is not None and g("div_yield") > 0.03:
         r.append(f"Dividend yield {g('div_yield') * 100:.1f}%")
-    if g("regime") is not None and g("regime") < 0:
-        r.append("Market regime bearish — new buying paused")
+    r += regime_reasons(row, cfg)
     if not g("liquid"):
         r.append("Illiquid (low average turnover) — higher manipulation risk")
     return r
+
+
+def regime_reasons(row: dict, cfg: dict) -> list[str]:
+    """Explain how the market / sector regime shaped this call."""
+    def g(k):
+        v = row.get(k)
+        return None if v is None or (isinstance(v, float) and v != v) else v
+    from .market import regime_name
+
+    rp = cfg.get("scoring", {}).get("regime_policy", {}) or {}
+    mode = rp.get("mode", "combined")
+    out = []
+    mkt, eff, sec = g("regime"), g("eff_regime"), g("sector_regime")
+    code, raw, adj = g("stance_code"), g("score"), g("score_adj")
+    mname = regime_name(mkt)
+    if mname == "recovery":
+        out.append("NEPSE in a recovery phase (early-bottom signals): buying allowed with smaller size")
+    if mode == "hard" and mname == "bear":
+        out.append("Market regime bearish — new buying paused")
+    if mode == "combined" and sec is not None and mkt is not None:
+        if sec >= 1 and mkt < 1:
+            out.append("Its sector is in its own uptrend while NEPSE is weaker")
+        elif sec <= -1 and mkt >= 0:
+            out.append("Its sector is in a downtrend even though NEPSE is not")
+    if raw is not None and adj is not None and abs(raw - adj) >= 0.5:
+        out.append(f"Score {raw:.0f} adjusted to {adj:.0f} for the {mname} market")
+    bearish = (eff if mode == "combined" else mkt)
+    if bearish is not None and bearish < 0 and mode in ("leaders", "combined"):
+        if g("leader") and (code or 0) >= 1:
+            out.append(f"Bear market: buy allowed because it is a sector-leading stock (RS {g('rs_rating') or 0:.0f})")
+        elif (code or 0) == 0 and not g("accumulate"):
+            out.append("Bear market: new buys are limited to sector leaders")
+    if g("accumulate"):
+        out.append(f"ACCUMULATE: cheap vs sector peers with solid ROE and price stabilising — build gradually "
+                   f"(about {(g('pos_size') or 0.25):.0%} of a normal position)")
+    elif (code or 0) >= 1 and g("pos_size") is not None and mode in ("sizing", "combined"):
+        out.append(f"Suggested size {g('pos_size'):.0%} of a normal position, stop {g('stop_mult') or 3:g}× ATR")
+    return out

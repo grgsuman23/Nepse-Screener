@@ -174,6 +174,10 @@ class Backtester:
         rank_expr = strategy.get("rank_by") or "rs_rating"
         rank = self.ev.eval(rank_expr)
         rank = (rank if isinstance(rank, pd.DataFrame) else w["close"] * 0 + rank).to_numpy(dtype=float)[rows]
+        SIZE = None
+        if strategy.get("size_by"):  # e.g. pos_size_combined: fraction of a normal position by regime
+            sz = self.ev.eval(strategy["size_by"])
+            SIZE = (sz if isinstance(sz, pd.DataFrame) else w["close"] * 0 + sz).to_numpy(dtype=float)[rows]
         reg_ok = None
         if strategy.get("regime_filter"):
             reg_ok = self.ev.mask(strategy["regime_filter"]).to_numpy()[rows].any(axis=1)
@@ -263,6 +267,9 @@ class Backtester:
                         target = min(target, prev_equity * max_w)
                     else:
                         target = min(budget_each, prev_equity * max_w)
+                    if SIZE is not None:
+                        f = SIZE[i - 1, j] if i > 0 else SIZE[i, j]
+                        target *= f if f == f and f > 0 else 1.0
                     target = min(target, cash / (1 + self.costs.round_trip_pct(max(cash, 1)) / 2 + 0.001))
                     if V[i, j] > 0:
                         target = min(target, V[i, j] * max_vol * px)
@@ -417,7 +424,7 @@ def result_to_json(r: Result, points: int = 400) -> dict:
         "id": s.get("id"), "name": s.get("name"), "type": s.get("type", "signal"),
         "description": (s.get("description") or "").strip(),
         "rules": {k: s.get(k) for k in ("entry", "exit", "filter", "rank_by", "hold_while", "regime_filter",
-                                         "rebalance", "top_n", "max_positions", "stop_atr", "stop_loss_pct",
+                                         "rebalance", "top_n", "max_positions", "stop_atr", "stop_loss_pct", "size_by",
                                          "take_profit_pct", "max_hold_days") if s.get(k) not in (None, "")},
         "params": s.get("_params", {}),
         "metrics": r.metrics, "benchmark_metrics": r.bench_metrics, "yearly": r.yearly,

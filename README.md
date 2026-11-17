@@ -45,6 +45,7 @@ Go to **Settings → Secrets and variables → Actions → New repository secret
 | `ALERT_TO` | where to send the e-mail; comma-separate several addresses |
 | `DASHBOARD_URL` | your GitHub Pages link |
 | `PORTFOLIO_CSV` | paste your holdings as CSV text (see section 5). Secrets are encrypted and never shown publicly. |
+| `SHEET_PORTFOLIOS` | Google Sheet portfolios, one `Name\|WebAppURL\|Key` per line (see `integrations/google_sheets/README.md`) |
 
 ---
 
@@ -76,11 +77,42 @@ Every run records which sources worked. You can see this under **Help → Data s
    * Liquidity: average turnover.
 2. **Composite score.** A weighted blend of the factors (weights are in `config/settings.yaml`). Missing factors are re-weighted, not treated as zero.
 3. **Call**
-   * **STRONG BUY**: score ≥ 75, price above the 200-DMA, 50-EMA above the 200-SMA, liquid, and not overbought.
-   * **BUY**: score ≥ 62, above the 200-DMA and liquid.
+   * **STRONG BUY**: adjusted score ≥ 75 (bull market), price above the 200-DMA, 50-EMA above the 200-SMA, liquid, and not overbought.
+   * **BUY**: adjusted score ≥ 62 (bull market), above the 200-DMA and liquid.
+   * **ACCUMULATE**: a long-term value call, only in a bear or recovery market (see below).
    * **REDUCE**: score < 40, *or* below the 50-EMA with a bearish Supertrend, *or* overextended (RSI > 80 and more than 25% above the 50-EMA).
    * **EXIT**: score < 28, or a broken trend (below the 200-DMA with a bearish Supertrend).
-   * **Bear-market gate.** When the NEPSE index is below its 200-DMA with a falling 50-EMA and weak breadth, no BUY calls are issued. NEPSE stocks fall together, so stock-picking rarely beats this.
+
+4. **Market regime and the bear-market rule** (`scoring.regime_policy` in `config/settings.yaml`)
+
+   NEPSE has four regimes:
+
+   | Regime | When |
+   |---|---|
+   | **Bull** | Index above its 200-DMA and the 50-EMA above the 200-SMA, with breadth not collapsing |
+   | **Recovery** | An early bottom: index back above a *rising* 50-EMA, plus a **breadth thrust** (stocks above their 50-DMA jump from under 25% to over 50% within 15 sessions) or more new 52-week highs than lows |
+   | **Neutral** | Anything in between |
+   | **Bear** | Index below its 200-DMA and the 50-EMA below the 200-SMA |
+
+   The default rule is **`combined`**, which applies six rules together:
+
+   | # | Rule | Bull | Recovery | Neutral | Bear |
+   |---|---|---|---|---|---|
+   | 1 | Score adjustment | 0 | −2 | −3 | −8 |
+   | 1 | Buy / strong-buy threshold | 62 / 75 | 64 / 77 | 65 / 78 | 70 / 83 |
+   | 2 | Who can be a BUY | anyone | anyone | anyone | **leaders only**: RS ≥ 85, own uptrend, sector rank ≥ 70 |
+   | 3 | Recovery state | n/a | buys resume early | n/a | n/a |
+   | 4 | Sector regime | each stock is judged by its **own sector's** trend first: a rising sector can produce buys during a NEPSE bear, and a falling sector is treated as bear even in a NEPSE bull. NEPSE's regime still sets the score adjustment. | | | |
+   | 5 | Suggested position size / stop | 100% / 3× ATR | 50% / 2.5× | 50% / 2.5× | 25% / 2× |
+   | 6 | ACCUMULATE | n/a | yes | n/a | yes: value score ≥ 75, EPS > 0, ROE ≥ sector median, NPL ≤ 5% (if known), price stabilising (Supertrend up or above the 50-EMA), liquid; build at 25% size |
+
+   Other modes, set with `mode:`:
+   * `hard`: the original rule, no buys in a bear market.
+   * `soft`: rule 1 only.
+   * `leaders`: rule 2 only.
+   * `sizing`: rule 5 only.
+
+   The **Strategies** page backtests the screener's own calls under every mode on the same history (the *Bear-market rule comparison* panel), so you can choose with data. The **Track Record** tab shows live hit rates by regime.
 
 Why these choices suit NEPSE: the market is retail-driven and moves in long waves, so momentum persists. Market-wide moves dominate individual stocks. Thinly traded scrips are easy to push around. Valuations differ a lot between sectors (bank vs hydro vs microfinance).
 
@@ -99,7 +131,8 @@ Built-in strategies, in `config/strategies.yaml`:
 | Supertrend + MACD | A MACD cross confirmed by a bullish Supertrend. |
 | Quality at a Reasonable Price | Each quarter, holds the 10 best sector-relative value + ROE stocks that are still in an uptrend. |
 | Sector Rotation | The strongest stocks inside the top-ranked sectors. |
-| Composite Model | Follows the screener's own BUY calls. This is the backtest of the model itself. |
+| Composite Model | Follows the screener's own BUY and ACCUMULATE calls with regime-based position sizes. This is the backtest of the model itself. |
+| Regime rule: hard / soft / leaders / sizing | The same model under each alternative bear-market rule, for comparison. |
 
 **What the backtester models:**
 * Signals use the close, and trades happen at the next day's open.
@@ -165,6 +198,11 @@ The WACC is assumed to already include buy commission (MeroShare's WACC does). T
 * **Tax note**: if you're within 30 days of the 365-day mark, it shows how much waiting would save.
 
 All limits are in `config/settings.yaml → portfolio`.
+
+---
+
+### Google Sheet portfolios (company or family accounts)
+Portfolios kept in Google Sheets can be read live through a small Apps Script bridge. It's key-protected, and nothing is stored in this repository. The screener's calls can also be written back into the sheet each day. Setup: **`integrations/google_sheets/README.md`**. For the daily e-mail, add the secret `SHEET_PORTFOLIOS` with one line `Name|WebAppURL|Key` per portfolio.
 
 ---
 

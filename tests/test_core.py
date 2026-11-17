@@ -132,7 +132,7 @@ def test_tracker_forward_returns(demo):
     expect = a.w["close"][row["symbol"]].iloc[d + 5] / a.w["close"][row["symbol"]].iloc[d] - 1
     assert row["ret_5"] == pytest.approx(expect)
     s = summarize(out, "stance", [5, 20])
-    assert {r["label"] for r in s} <= {"STRONG BUY", "BUY", "HOLD", "REDUCE", "EXIT"}
+    assert {r["label"] for r in s} <= {"STRONG BUY", "BUY", "ACCUMULATE", "HOLD", "REDUCE", "EXIT"}
 
 
 def test_portfolio_advice(demo):

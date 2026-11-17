@@ -60,12 +60,20 @@ costs:
   long_term_days: 365
 
 regime:
-  # Market regime drives "no new buys in a bear market" logic
+  # Market regime: Bull (1), Recovery (0.5), Neutral (0), Bear (-1)
   index_symbol: NEPSE
   fast_ma: 50
   slow_ma: 200
   breadth_bull: 0.55                 # share of stocks above their 50-DMA
   breadth_bear: 0.35
+  # Recovery = early bottom: index back above a rising 50-EMA plus a breadth
+  # thrust (stocks above their 50-DMA jump from < low to > high within N
+  # sessions) or more new 52-week highs than lows.
+  recovery_enabled: true
+  thrust_low: 0.25
+  thrust_high: 0.50
+  thrust_window: 15                  # sessions for the jump
+  thrust_memory: 60                  # sessions a thrust keeps "recovery" alive
 
 # ---------------------------------------------------------------------
 #  Composite score (0–100) = weighted blend of factor scores.
@@ -89,8 +97,37 @@ scoring:
   overbought_rsi: 80
   overextended_pct_above_ema50: 0.25
 
+  # -------------------------------------------------------------------
+  #  How the market regime affects BUY calls
+  #    hard     : no buys in a bear market (original rule)
+  #    soft     : buys allowed, but score is reduced and thresholds raised
+  #    leaders  : in a bear market only sector-leading RS leaders can be buys
+  #    sizing   : buys allowed; suggested position size and stop shrink instead
+  #    combined : soft + leaders + sector regime + recovery + sizing + accumulate
+  # -------------------------------------------------------------------
+  regime_policy:
+    mode: combined
+    # rule 1 — score adjustment and thresholds by regime
+    score_adjust:     {bull: 0,  recovery: -2, neutral: -3, bear: -8}
+    buy_threshold:    {bull: 62, recovery: 64, neutral: 65, bear: 70}
+    strong_threshold: {bull: 75, recovery: 77, neutral: 78, bear: 83}
+    # rule 2 — who counts as a leader in a bear market
+    leader_rs_min: 85
+    leader_sector_rs_min: 70
+    # rule 4 — judge each stock by its own sector's trend first
+    use_sector_regime: true
+    # rule 5 — suggested position size (fraction of normal) and ATR stop multiple
+    position_size: {bull: 1.0, recovery: 0.5, neutral: 0.5, bear: 0.25}
+    stop_atr:      {bull: 3.0, recovery: 2.5, neutral: 2.5, bear: 2.0}
+    # rule 6 — ACCUMULATE: long-term value buying in bear / recovery markets
+    accumulate_enabled: true
+    accumulate_value_min: 75          # value score (sector-relative) at least this
+    accumulate_quality_pct_min: 0.5   # ROE at least sector median
+    accumulate_max_npl: 0.05          # banks/FIs: skip if NPL above this (when known)
+    accumulate_size: 0.25
+
 portfolio:
-  atr_stop_multiple: 3.0             # trailing stop = highest close since buy − k × ATR
+  atr_stop_multiple: 3.0             # used when regime_policy sizing is off; otherwise stop_atr by regime
   hard_stop_pct: 0.15                # max loss from WACC before forced EXIT review
   max_position_weight: 0.20
   max_sector_weight: 0.40

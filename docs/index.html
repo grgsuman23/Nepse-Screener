@@ -119,6 +119,8 @@ input::placeholder{color:var(--faint)}
 .call{display:inline-block;border-radius:6px;padding:2px 8px;font:700 12px/1.5 var(--font);letter-spacing:.2px;white-space:nowrap}
 .c2{background:var(--up);color:#06210F}.c1{background:var(--up-soft);color:var(--up)}.c0{background:var(--raise);color:var(--mut)}
 .c-1{background:var(--amber-soft);color:var(--amber)}.c-2{background:var(--down);color:#fff}
+.cacc{background:var(--blue-soft);color:var(--blue);box-shadow:inset 0 0 0 1px var(--blue)}
+.tag{display:inline-block;border-radius:6px;padding:1px 7px;font-size:12px;font-weight:600;background:var(--raise);color:var(--mut)}
 .reg{display:inline-flex;align-items:center;gap:6px;font-weight:700;font-size:13px}
 .reg i{width:9px;height:9px;border-radius:50%;display:inline-block}
 
@@ -321,7 +323,12 @@ const STANCE_CODE = {'STRONG BUY':2,'BUY':1,'HOLD':0,'REDUCE':-1,'EXIT':-2};
 const call = c => isNum(c) ? `<span class="call c${c}">${STANCE[c]}</span>` : '<span class="call c0">n/a</span>';
 const ACT = {EXIT:['Exit','c-2'],REDUCE:['Reduce','c-1'],HOLD:['Hold','c0'],ADD:['Buy more','c1']};
 const actCall = a => `<span class="call ${ACT[a][1]}">${ACT[a][0]}</span>`;
-const regime = r => { const [l,c] = r>0?['Bull','var(--up)']:r<0?['Bear','var(--down)']:['Neutral','var(--amber)']; return `<span class="reg"><i style="background:${c}"></i>${l}</span>`; };
+const regName = r => !isNum(r) ? 'neutral' : r>=1 ? 'bull' : r>0 ? 'recovery' : r<0 ? 'bear' : 'neutral';
+const REG = {bull:['Bull','var(--up)'], recovery:['Recovery','var(--blue)'], neutral:['Neutral','var(--amber)'], bear:['Bear','var(--down)']};
+const regime = r => { const [l,c] = REG[regName(r)]; return `<span class="reg"><i style="background:${c}"></i>${l}</span>`; };
+const callR = r => r && r.accumulate && r.stance_code===0 ? '<span class="call cacc">Accumulate</span>' : call(r ? r.stance_code : null);
+const callLbl = l => l==='ACCUMULATE' ? '<span class="call cacc">Accumulate</span>' : call(STANCE_CODE[l]);
+const POLICY = () => (((D.meta||{}).settings||{}).scoring||{}).regime_policy || {};
 const css = n => getComputedStyle(document.body).getPropertyValue(n).trim();
 function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),2200); }
 function store(k, v){ try{ if(v===undefined) return JSON.parse(localStorage.getItem(k)); localStorage.setItem(k, JSON.stringify(v)); }catch(e){ window['__'+k]=v===undefined?window['__'+k]:v; return window['__'+k]; } }
@@ -455,13 +462,13 @@ function ridgeChart(host, s, n){
     ridge(sl, css('--ridge1')); ridge(fa, css('--ridge2'));
     const gr=g.createLinearGradient(0,T,0,B); const blue=css('--blue'); gr.addColorStop(0, blue+'CC'); gr.addColorStop(1, blue+'10'); ridge(ix, gr);
     g.strokeStyle=css('--snow'); g.lineWidth=1.8; g.lineJoin='round'; g.beginPath(); let st=false; ix.forEach((v,i)=>{ if(!isNum(v)) return; st?g.lineTo(xp(i),yp(v)):(g.moveTo(xp(i),yp(v)),st=true); }); g.stroke();
-    const cR={1:css('--up'),0:css('--amber'),'-1':css('--down')}; const bw=plotW/Math.max(1,N-1);
-    rg.forEach((r,i)=>{ g.fillStyle=cR[r]; g.fillRect(xp(i)-bw/2, B+4, bw+.6, 6); });
+    const cR={bull:css('--up'),recovery:css('--blue'),neutral:css('--amber'),bear:css('--down')}; const bw=plotW/Math.max(1,N-1);
+    rg.forEach((r,i)=>{ g.fillStyle=cR[regName(r)]; g.fillRect(xp(i)-bw/2, B+4, bw+.6, 6); });
     g.fillStyle=css('--faint'); g.textAlign='center'; const step=Math.max(1,Math.ceil(N/Math.max(2,Math.floor(plotW/110))));
     for(let i=0;i<N;i+=step) g.fillText(d[i].slice(0,7), xp(i), H-11);
     if(hover!==undefined){ const x=xp(hover); g.strokeStyle=css('--mut'); g.setLineDash([3,3]); g.beginPath(); g.moveTo(x,T-10); g.lineTo(x,B); g.stroke(); g.setLineDash([]);
       g.fillStyle=css('--snow'); g.beginPath(); g.arc(x,yp(ix[hover]),4,0,7); g.fill();
-      tip.innerHTML=`<b>${d[hover]}</b><br>NEPSE <b>${fmt.n(ix[hover])}</b><br><span style="color:${css('--ridge2')}">●</span> 50-day EMA ${fmt.n(fa[hover])}<br><span style="color:${css('--ridge1')}">●</span> 200-day SMA ${fmt.n(sl[hover])}<br>Regime: ${['Bear','Neutral','Bull'][rg[hover]+1]}`;
+      tip.innerHTML=`<b>${d[hover]}</b><br>NEPSE <b>${fmt.n(ix[hover])}</b><br><span style="color:${css('--ridge2')}">●</span> 50-day EMA ${fmt.n(fa[hover])}<br><span style="color:${css('--ridge1')}">●</span> 200-day SMA ${fmt.n(sl[hover])}<br>Regime: ${REG[regName(rg[hover])][0]}`;
       tip.style.display='block'; const tw=tip.offsetWidth; tip.style.left=Math.min(W-tw-6,x+14)+'px'; tip.style.top=(T-6)+'px'; } else tip.style.display='none';
   }
   draw();
@@ -500,11 +507,16 @@ async function boot(){
 /* ======================================================================
    Market
    ====================================================================== */
+function regimeNote(m){ const mode=m.regime_policy||POLICY().mode||'combined', n=regName(m.regime);
+  if(n==='bull') return 'Full-size buys';
+  if(n==='recovery') return 'Early bottom: half-size buys'+(m.thrust_recent?', breadth thrust seen':'');
+  if(n==='neutral') return mode==='hard'?'Buying allowed':'Buys at half size, higher bar';
+  return mode==='hard'?'New buying paused':mode==='soft'?'Buys need a much higher score':mode==='leaders'?'Buys limited to leaders':mode==='sizing'?'Buys at quarter size':'Leaders and Accumulate only, small size'; }
 R.market = function(){
   const m=D.market, el=$('#pg-market'), sc=m.stance_counts||{};
   const picks=D.rows.filter(r=>r.stance_code>=1).sort((a,b)=>(b.score||0)-(a.score||0)).slice(0,9);
   const tot = Object.values(sc).reduce((a,b)=>a+b,0)||1;
-  const callBar = [[2,'var(--up)'],[1,'color-mix(in srgb,var(--up) 45%,transparent)'],[0,'var(--raise)'],[-1,'var(--amber)'],[-2,'var(--down)']].map(([c,col])=>`<i title="${STANCE[c]}: ${sc[STANCE[c].toUpperCase()]||0}" style="display:inline-block;height:100%;width:${(sc[STANCE[c].toUpperCase()]||0)/tot*100}%;background:${col}"></i>`).join('');
+  const callBar = [['STRONG BUY','var(--up)'],['BUY','color-mix(in srgb,var(--up) 45%,transparent)'],['ACCUMULATE','var(--blue)'],['HOLD','var(--raise)'],['REDUCE','var(--amber)'],['EXIT','var(--down)']].map(([k,col])=>`<i title="${k.toLowerCase()}: ${sc[k]||0}" style="display:inline-block;height:100%;width:${(sc[k]||0)/tot*100}%;background:${col}"></i>`).join('');
   el.innerHTML = `
   <div class="hero">
     <div class="hero-top"><div><div class="lbl">NEPSE index, ${esc(D.meta.last_trade_date)}</div><div class="big num">${fmt.n(m.index)}</div>
@@ -512,21 +524,21 @@ R.market = function(){
       <div class="seg" id="rng">${[[63,'3M'],[126,'6M'],[250,'1Y'],[750,'3Y']].map(([n,l])=>`<button data-n="${n}" class="${S.range===n?'on':''}">${l}</button>`).join('')}</div></div>
     <div id="ridge"></div>
     <div class="hero-legend"><span><i style="background:var(--blue)"></i>NEPSE index</span><span><i style="background:var(--ridge2)"></i>50-day trend</span><span><i style="background:var(--ridge1)"></i>200-day trend</span>
-      <span><i style="background:var(--up)"></i>Bull</span><span><i style="background:var(--amber)"></i>Neutral</span><span><i style="background:var(--down)"></i>Bear regime</span><span class="faint">${esc(m.index_source)} index</span></div>
+      <span><i style="background:var(--up)"></i>Bull</span><span><i style="background:var(--blue)"></i>Recovery</span><span><i style="background:var(--amber)"></i>Neutral</span><span><i style="background:var(--down)"></i>Bear regime</span><span class="faint">${esc(m.index_source)} index</span></div>
   </div>
   <div class="strip mt">
-    <div><div class="k">Market regime</div><div class="v" style="font-size:21px">${regime(m.regime)}</div><div class="s">${m.regime<0?'New buying paused':'Buying allowed'}</div></div>
+    <div><div class="k">Market regime</div><div class="v" style="font-size:21px">${regime(m.regime)}</div><div class="s">${regimeNote(m)}</div></div>
     <div><div class="k">Stocks above 50-day avg</div><div class="v">${fmt.p(m.breadth_50,0)}</div><div class="s">${fmt.p(m.breadth_200,0)} above 200-day</div></div>
     <div><div class="k">Advancing / declining</div><div class="v"><span class="up">${fmt.i(m.advances)}</span> <span class="faint">/</span> <span class="down">${fmt.i(m.declines)}</span></div><div class="s">${fmt.i(m.new_highs)} new 52-week highs, ${fmt.i(m.new_lows)} lows</div></div>
     <div><div class="k">Turnover</div><div class="v">Rs ${fmt.npr(m.turnover)}</div><div class="s">${D.meta.liquid} liquid stocks</div></div>
-    <div style="min-width:220px"><div class="k">Model calls today</div><div class="v" style="font-size:19px"><span class="up">${(sc['STRONG BUY']||0)+(sc['BUY']||0)} buy</span>  <span class="down">${(sc['REDUCE']||0)+(sc['EXIT']||0)} sell</span>  <span class="mut">${sc['HOLD']||0} hold</span></div>
+    <div style="min-width:220px"><div class="k">Model calls today</div><div class="v" style="font-size:19px"><span class="up">${(sc['STRONG BUY']||0)+(sc['BUY']||0)} buy</span>  <span class="down">${(sc['REDUCE']||0)+(sc['EXIT']||0)} sell</span>  <span class="mut">${sc['HOLD']||0} hold</span>${sc['ACCUMULATE']?`  <span style="color:var(--blue)">${sc['ACCUMULATE']} accumulate</span>`:''}</div>
       <div style="height:7px;border-radius:4px;overflow:hidden;display:flex;margin-top:7px;background:var(--raise)">${callBar}</div></div>
   </div>
   <div class="grid split mt">
     <div class="panel"><div class="panel-head"><div><h2>Market map</h2><p class="sub">Tile size is today's turnover, colour is the day's change. Click a stock to open it.</p></div>
       <div class="scale"><span>−5%</span><div></div><span>+5%</span></div></div><div class="heat" id="heat"></div></div>
     <div class="panel"><h2>Top picks</h2><p class="sub">Highest composite scores rated buy or better</p>
-      ${picks.length ? picks.map(r=>`<div class="pick" onclick="openStock('${r.symbol}')">${starBtn(r.symbol)}<div><span class="sym" style="font-weight:700">${r.symbol}</span> ${call(r.stance_code)}<span class="nm mut" style="display:block;font-size:12.5px">${esc(r.sector)}</span></div>
+      ${picks.length ? picks.map(r=>`<div class="pick" onclick="openStock('${r.symbol}')">${starBtn(r.symbol)}<div><span class="sym" style="font-weight:700">${r.symbol}</span> ${callR(r)}<span class="nm mut" style="display:block;font-size:12.5px">${esc(r.sector)}</span></div>
         ${spark(r.spark,72,26)}<div class="score num" title="Composite score">${fmt.n(r.score,0)}</div></div>`).join('')
         : `<div class="empty"><b>No buy calls today</b>${m.regime<0?'The market is in a bear regime, so the model is waiting for the trend to turn.':'No stock meets the buy rules right now.'}</div>`}
     </div>
@@ -544,7 +556,7 @@ function drawMovers(){
   const vh = {gainers:'Change',losers:'Change',turnover_leaders:'Turnover',volume_spikes:'Volume vs avg'}[S.movers];
   const vf = v => S.movers==='turnover_leaders'?'Rs '+fmt.npr(v):S.movers==='volume_spikes'?fmt.n(v,1)+'×':`<span class="${tone(v)}">${fmt.sp(v)}</span>`;
   $('#movers').innerHTML = `<div class="tbl" style="max-height:none"><table><thead><tr><th></th><th>Stock</th><th class="num">Last price</th><th class="num">${vh}</th><th class="num">1 month</th><th>40 sessions</th><th>Call</th></tr></thead><tbody>
-    ${rows.map(r=>`<tr class="row" onclick="openStock('${r.symbol}')"><td style="width:28px">${starBtn(r.symbol)}</td><td><span class="sym">${r.symbol}</span><span class="nm">${esc(r.sector)}</span></td><td class="num">${fmt.n(r.close)}</td><td class="num">${vf(r._v)}</td><td class="num ${tone(r.ret_1m)}">${fmt.sp(r.ret_1m)}</td><td>${spark(r.spark)}</td><td>${call(r.stance_code)}</td></tr>`).join('')}</tbody></table></div>`;
+    ${rows.map(r=>`<tr class="row" onclick="openStock('${r.symbol}')"><td style="width:28px">${starBtn(r.symbol)}</td><td><span class="sym">${r.symbol}</span><span class="nm">${esc(r.sector)}</span></td><td class="num">${fmt.n(r.close)}</td><td class="num">${vf(r._v)}</td><td class="num ${tone(r.ret_1m)}">${fmt.sp(r.ret_1m)}</td><td>${spark(r.spark)}</td><td>${callR(r)}</td></tr>`).join('')}</tbody></table></div>`;
 }
 function squarify(items, x, y, w, h){
   const out=[]; let rest=items.filter(i=>i.v>0); const total=rest.reduce((a,b)=>a+b.v,0); if(!total||w<=0||h<=0) return out;
@@ -590,7 +602,7 @@ const COLSETS = {
 const FIELDS = ['close','chg_pct','ret_1w','ret_1m','ret_3m','ret_6m','ret_12m','rs_rating','rsi_14','rsi_2','adx_14','macd_hist','st_dir','vol_ratio','turnover_sma_20','atr_pct','dist_sma200','dist_ema50','pct_from_52w_high','pct_from_52w_low','bb_pctb','mfi_14','sector_rs_rank','eps','pe','pbv','roe','div_yield','graham_discount','pe_vs_sector','pbv_vs_sector','mcap','score','score_trend','score_momentum','score_value','score_quality','stance_code','liquid'];
 function cellv(r, c){ const v=r[c[0]];
   switch(c[2]){ case 'spark': return spark(r.spark); case 'sp': return `<span class="${tone(v)}">${fmt.sp(v)}</span>`; case 'p': return fmt.p(v); case 'n0': return fmt.n(v,0); case 'n1': return fmt.n(v,1); case 'n2': return fmt.n(v,2); case 'npr': return fmt.npr(v);
-    case 'call': return call(v); case 'dir': return v>0?'<span class="up">Up</span>':v<0?'<span class="down">Down</span>':'–';
+    case 'call': return callR(r); case 'dir': return v>0?'<span class="up">Up</span>':v<0?'<span class="down">Down</span>':'–';
     case 'score': return `<b class="num" style="font-size:16px">${fmt.n(v,0)}</b>`;
     case 'bar': return `<div style="display:flex;align-items:center;gap:8px;justify-content:flex-end"><div class="bar" style="width:60px"><i style="width:${isNum(v)?v:0}%;background:${(v||0)>=60?'var(--up)':(v||0)<40?'var(--down)':'var(--blue)'}"></i></div><span class="num">${fmt.n(v,0)}</span></div>`;
     default: return fmt.n(v); } }
@@ -607,7 +619,7 @@ R.screener = function(){
     <div style="min-width:0"><div class="panel" style="padding:12px 14px">
       <div class="toolbar"><input id="sQ" placeholder="Filter by symbol or name" style="flex:1;min-width:150px">
         <select id="sSector"><option value="">All sectors</option>${secs.map(s=>`<option>${esc(s)}</option>`).join('')}</select>
-        <select id="sStance"><option value="">Any call</option><option value="2">Strong buy</option><option value="1">Buy or better</option><option value="0">Hold</option><option value="-1">Reduce or exit</option><option value="-2">Exit</option></select>
+        <select id="sStance"><option value="">Any call</option><option value="2">Strong buy</option><option value="1">Buy or better</option><option value="0">Hold</option><option value="acc">Accumulate</option><option value="-1">Reduce or exit</option><option value="-2">Exit</option></select>
         <label style="display:flex;gap:6px;align-items:center;font-size:14px"><input type="checkbox" id="sLiq" checked> Liquid only</label>
         <button class="btn" onclick="exportCSV()"><svg viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>CSV</button></div>
       <div class="toolbar" style="margin-top:10px"><div class="seg" id="sCols">${Object.keys(COLSETS).map(k=>`<button data-k="${k}">${k[0].toUpperCase()+k.slice(1)}</button>`).join('')}</div>
@@ -633,7 +645,7 @@ function rowsNow(){
   let rows=D.rows;
   if(S.screen){ const h=new Set(D.preset[S.screen].hits); rows=rows.filter(r=>h.has(r.symbol)); }
   if(S.sector) rows=rows.filter(r=>r.sector===S.sector);
-  if(S.stance!==''){ const s=+S.stance; rows=rows.filter(r=>s===1?r.stance_code>=1:s===-1?r.stance_code<=-1:r.stance_code===s); }
+  if(S.stance==='acc') rows=rows.filter(r=>r.accumulate); else if(S.stance!==''){ const s=+S.stance; rows=rows.filter(r=>s===1?r.stance_code>=1:s===-1?r.stance_code<=-1:r.stance_code===s); }
   if(S.liquid && !S.screen) rows=rows.filter(r=>r.liquid);
   if(S.q) rows=rows.filter(r=>r.symbol.includes(S.q)||(r.name||'').toUpperCase().includes(S.q));
   S.filters.forEach(({f,o,v})=>rows=rows.filter(r=>{ const x=r[f]; if(!isNum(x)) return false; return o==='>'?x>v:o==='<'?x<v:o==='>='?x>=v:o==='<='?x<=v:Math.abs(x-v)<1e-9; }));
@@ -666,7 +678,7 @@ async function drawDrawer(){
   const r=D.by[CUR]; if(!r) return;
   $('#dHead').innerHTML=`<div class="dtitle"><h2>${r.symbol}</h2>${starBtn(r.symbol)}<span class="mut">${esc(r.name)}<br>${esc(r.sector)}</span>
       <span style="margin-left:auto" class="px num">${fmt.n(r.close)}</span><span class="num ${tone(r.chg_pct)}" style="font-size:19px;font-weight:600">${fmt.sp(r.chg_pct,2)}</span>
-      ${call(r.stance_code)}<span class="num" style="font-size:19px" title="Composite score">${fmt.n(r.score,0)}<span class="faint" style="font-size:14px">/100</span></span>
+      ${callR(r)}<span class="num" style="font-size:19px" title="Composite score">${fmt.n(r.score,0)}<span class="faint" style="font-size:14px">/100</span></span>
       <button class="iconbtn" onclick="closeDrawer()" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
     <div class="tabs" id="dTabs">${[['chart','Chart'],['analysis','Why this call'],['fund','Fundamentals'],['tech','Technicals']].map(([k,l])=>`<button data-k="${k}" class="${S.dtab===k?'on':''}">${l}</button>`).join('')}</div>`;
   $('#dTabs').onclick=e=>{ const k=e.target.dataset.k; if(k){ S.dtab=k; drawDrawer(); } };
@@ -678,6 +690,8 @@ async function drawDrawer(){
       <div id="sc"><div class="empty">Loading chart</div></div>
       <div class="grid cols-2 mt"><div class="panel"><h2>Key levels</h2><div class="kv" style="grid-template-columns:1fr 1fr">
         ${kv('Supertrend',r.st_dir>0?`<span class="up">support ${fmt.n(r.st_line)}</span>`:`<span class="down">resistance ${fmt.n(r.st_line)}</span>`)}${kv('50-day EMA',fmt.n(r.ema_50))}${kv('200-day SMA',fmt.n(r.sma_200))}${kv('ATR (14)',fmt.n(r.atr_14))}
+        ${kv('Score after regime',fmt.n(r.score_adj,0))}${kv('Sector trend',regime(r.sector_regime))}${kv('Regime used',regime(r.eff_regime))}${kv('Market leader',r.leader?'<span class="up">Yes</span>':'No')}
+        ${kv('Suggested size',isNum(r.pos_size)?fmt.p(r.pos_size,0)+' of normal':'–')}${kv('Stop distance',isNum(r.stop_mult)?r.stop_mult+'× ATR':'–')}
         ${kv('52-week high',fmt.n(r.high_52w_t))}${kv('52-week low',fmt.n(r.low_52w_t))}${kv('From 52W high',`<span class="${tone(r.pct_from_52w_high)}">${fmt.sp(r.pct_from_52w_high)}</span>`)}${kv('Avg turnover','Rs '+fmt.npr(r.turnover_sma_20))}</div></div>
         <div class="panel"><h2>Factor scores</h2>${factorBars(r)}</div></div>
       <div class="toolbar mt"><button class="btn pri" onclick="addToPortfolio('${r.symbol}')">Add to my portfolio</button></div>`;
@@ -727,10 +741,10 @@ R.sectors = function(){
   const el=$('#pg-sectors'), SX=D.sectors||[];
   const q={Leading:'var(--up)',Weakening:'var(--amber)',Lagging:'var(--down)',Improving:'var(--blue)'};
   el.innerHTML=`<div class="pagehead"><h1>Sectors</h1><p>Money rotates between sectors. Ranked by relative strength over the last one to three months.</p></div>
-  <div class="tbl" style="max-height:none"><table><thead><tr><th>Sector</th><th class="num">1W</th><th class="num">1M</th><th class="num">3M</th><th class="num">6M</th><th class="num">12M</th><th class="num">RS rank</th><th>Rotation</th><th class="num">Above 200-day</th><th class="num">P/E</th><th class="num">P/B</th><th class="num">ROE</th><th class="num">Div yield</th><th class="num">Avg score</th><th class="num">Buy / sell calls</th><th>Leaders</th></tr></thead><tbody>
+  <div class="tbl" style="max-height:none"><table><thead><tr><th>Sector</th><th class="num">1W</th><th class="num">1M</th><th class="num">3M</th><th class="num">6M</th><th class="num">12M</th><th class="num">RS rank</th><th>Own trend</th><th>Rotation</th><th class="num">Above 200-day</th><th class="num">P/E</th><th class="num">P/B</th><th class="num">ROE</th><th class="num">Div yield</th><th class="num">Avg score</th><th class="num">Buy / sell calls</th><th>Leaders</th></tr></thead><tbody>
     ${SX.map(s=>`<tr class="row" onclick="S.sector='${esc(s.sector)}';S.screen='';go('screener')"><td><span class="sym">${esc(s.sector)}</span><span class="nm">${s.n} stocks</span></td>
       ${['ret_1w','ret_1m','ret_3m','ret_6m','ret_12m'].map(k=>`<td class="num ${tone(s[k])}">${fmt.sp(s[k])}</td>`).join('')}
-      <td class="num"><b>${fmt.n(s.rs_rank,0)}</b></td><td><span class="reg"><i style="background:${q[s.quadrant]||'var(--faint)'}"></i>${s.quadrant}</span></td><td class="num">${fmt.p(s.above_200,0)}</td>
+      <td class="num"><b>${fmt.n(s.rs_rank,0)}</b></td><td>${regime(s.regime)}</td><td><span class="reg"><i style="background:${q[s.quadrant]||'var(--faint)'}"></i>${s.quadrant}</span></td><td class="num">${fmt.p(s.above_200,0)}</td>
       <td class="num">${fmt.n(s.median_pe,1)}</td><td class="num">${fmt.n(s.median_pbv,2)}</td><td class="num">${fmt.p(s.median_roe)}</td><td class="num">${fmt.p(s.median_div_yield)}</td><td class="num">${fmt.n(s.avg_score,0)}</td>
       <td class="num"><span class="up">${s.buys}</span> / <span class="down">${s.exits}</span></td><td>${s.leaders.slice(0,3).map(x=>`<a href="#" onclick="event.stopPropagation();openStock('${x}');return false">${x}</a>`).join(', ')}</td></tr>`).join('')}</tbody></table></div>
   <div class="grid cols-2 mt"><div class="panel"><h2>Rotation map</h2><p class="sub">Sectors usually move clockwise: improving, leading, weakening, lagging. Tails show the last 12 weeks.</p><div id="rrg"></div></div>
@@ -765,13 +779,21 @@ R.watch = function(){
   el.innerHTML=`<div class="pagehead"><h1>Watchlist</h1><p>Stocks you starred. Saved in this browser.</p></div>
   ${w.length?`<div class="tiles">${w.map(s=>{ const r=D.by[s]; return `<div class="tile-w" onclick="openStock('${s}')"><div class="row1"><span class="sym" style="font-weight:700;font-size:17px">${s}</span>${starBtn(s)}<span class="px num">${fmt.n(r.close)}</span></div>
     <div class="row1" style="margin-top:2px"><span class="mut" style="font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:120px">${esc(r.sector)}</span><span class="num ${tone(r.chg_pct)}" style="margin-left:auto;font-weight:600">${fmt.sp(r.chg_pct,2)}</span></div>
-    <div style="margin:8px 0 6px">${spark(r.spark,200,40)}</div><div class="row1">${call(r.stance_code)}<span class="mut" style="font-size:13px">score <b class="num" style="color:var(--text)">${fmt.n(r.score,0)}</b></span><span class="mut num" style="margin-left:auto;font-size:13px">RSI ${fmt.n(r.rsi_14,0)}</span></div></div>`; }).join('')}</div>`
+    <div style="margin:8px 0 6px">${spark(r.spark,200,40)}</div><div class="row1">${callR(r)}<span class="mut" style="font-size:13px">score <b class="num" style="color:var(--text)">${fmt.n(r.score,0)}</b></span><span class="mut num" style="margin-left:auto;font-size:13px">RSI ${fmt.n(r.rsi_14,0)}</span></div></div>`; }).join('')}</div>`
   :`<div class="panel empty"><b>Your watchlist is empty</b>Tap the ★ next to any stock in the screener, market page or stock panel to follow it here.</div>`}`;
 };
 
 /* ======================================================================
    Strategies
    ====================================================================== */
+function regimeCompare(SX){
+  const ids=[['model_hard','Hard: no buys in a bear market'],['model_soft','Soft: score penalty and higher bar'],['model_leaders','Leaders only in a bear market'],['model_sizing','Sizing: smaller positions, no veto'],['model_score','Combined (active rule)']];
+  const rows=ids.map(([id,l])=>[SX.find(s=>s.id===id),l]).filter(x=>x[0]); if(rows.length<2) return '';
+  const best=Math.max(...rows.map(([s])=>s.metrics.calmar||-9));
+  return `<div class="panel mt"><h2>Bear-market rule comparison</h2><p class="sub">The screener's own calls followed under each regime rule, on the same history and costs. Calmar = return ÷ worst drawdown; higher is better.</p>
+  <table class="plain"><thead><tr><th>Rule</th><th class="num">CAGR</th><th class="num">Max drawdown</th><th class="num">Calmar</th><th class="num">Sharpe</th><th class="num">Win rate</th><th class="num">Time invested</th><th class="num">Trades</th></tr></thead><tbody>
+  ${rows.map(([s,l])=>{ const m=s.metrics; return `<tr class="row" onclick="S.strat='${s.id}';S.stab='overview';R.strategies()"><td>${esc(l)}${(m.calmar||-9)===best?' <span class="call c1">best</span>':''}</td><td class="num ${tone(m.cagr)}">${fmt.sp(m.cagr)}</td><td class="num down">${fmt.p(m.max_drawdown)}</td><td class="num"><b>${fmt.n(m.calmar)}</b></td><td class="num">${fmt.n(m.sharpe)}</td><td class="num">${fmt.p(m.win_rate,0)}</td><td class="num">${fmt.p(m.exposure,0)}</td><td class="num">${fmt.i(m.trades)}</td></tr>`; }).join('')}</tbody></table></div>`;
+}
 R.strategies = function(){
   const el=$('#pg-strategies'), SX=D.strategies||[];
   if(!SX.length){ el.innerHTML='<div class="panel empty"><b>No backtests yet</b>They are created by the daily update.</div>'; return; }
@@ -786,6 +808,7 @@ R.strategies = function(){
       <td class="num down">${fmt.p(m.max_drawdown)}</td><td class="num">${fmt.n(m.sharpe)}</td><td class="num">${fmt.p(m.win_rate,0)}</td><td class="num">${fmt.i(m.trades)}</td>
       <td>${o?`<span class="call ${vc[o.verdict]||'c0'}">${o.verdict}</span>`:'<span class="faint">not tested</span>'}</td><td style="font-size:13px">${t.length?t.slice(0,3).join(', ')+(t.length>3?` +${t.length-3}`:''):'<span class="faint">none</span>'}</td></tr>`; }).join('')}
     <tr><td><span class="sym">Buy and hold NEPSE</span><span class="nm">Benchmark</span></td><td></td><td class="num">${fmt.sp(b.cagr)}</td><td></td><td class="num down">${fmt.p(b.max_drawdown)}</td><td class="num">${fmt.n(b.sharpe)}</td><td colspan="4"></td></tr></tbody></table></div>
+  ${regimeCompare(SX)}
   <div id="sd" class="mt"></div>`;
   drawStrat(SX.find(s=>s.id===S.strat)||SX[0]);
 };
@@ -830,7 +853,7 @@ function drawStrat(s){
    ====================================================================== */
 const PF_KEY='nepse_screener_portfolio_v1';
 const pfLoad=()=>store(PF_KEY)||[], pfSave=h=>store(PF_KEY,h);
-function addToPortfolio(sym){ closeDrawer(); go('portfolio'); setTimeout(()=>{ $('#pSym').value=sym; $('#pQty').focus(); },50); }
+function addToPortfolio(sym){ closeDrawer(); S.pfSrc='local'; store('nepse_pf_selected','local'); go('portfolio'); setTimeout(()=>{ $('#pSym').value=sym; $('#pQty').focus(); },50); }
 function parseCSV(text){
   const lines=text.trim().split(/\r?\n/).filter(Boolean); if(!lines.length) return [];
   const split=l=>l.match(/("([^"]|"")*"|[^,]*)(,|$)/g).slice(0,-1).map(x=>x.replace(/,$/,'').replace(/^"|"$/g,'').replace(/""/g,'"').trim());
@@ -845,21 +868,70 @@ const COST=()=>(D.meta.settings||{}).costs||{}, PFC=()=>(D.meta.settings||{}).po
 function commission(v){ const c=COST(); for(const [lim,rate] of (c.broker_commission_tiers||[[null,.004]])) if(lim===null||v<=lim) return Math.max(c.min_commission||10,v*rate); return v*.0024; }
 function sellBreakdown(qty,px,basis,days){ const c=COST(), v=qty*px, fees=commission(v)+v*(c.sebon_fee||.00015)+(c.dp_charge||25), gain=v-fees-basis;
   const rate=days>(c.long_term_days||365)?(c.cgt_long_term??.0375):(c.cgt_short_term??.05), tax=Math.max(0,gain)*rate; return {net:v-fees-tax,profit:gain-tax,gain,rate,tax}; }
+/* portfolio sources: this browser, or Google Sheets through the Apps Script bridge */
+const SRC_KEY='nepse_pf_sources_v1', SHEETS={};
+const pfSources=()=>store(SRC_KEY)||[];
+function sheetURL(src){ return src.url+(src.url.includes('?')?'&':'?')+'action=holdings&key='+encodeURIComponent(src.key); }
+async function loadSheet(src, force){
+  const c=SHEETS[src.url]; if(c&&!force&&Date.now()-c.t<5*60e3) return c.data;
+  const r=await fetch(sheetURL(src),{cache:'no-store'}); if(!r.ok) throw new Error('HTTP '+r.status);
+  const js=await r.json(); if(!js.ok) throw new Error(js.error||'The sheet bridge returned an error');
+  SHEETS[src.url]={t:Date.now(),data:js}; return js;
+}
+function combine(rows){ const m={}; rows.forEach(h=>{ const k=h.symbol; const q=+h.quantity||0; if(q<=0) return; const p=m[k]||(m[k]={symbol:k,quantity:0,cost:0,costQ:0,buy_date:''});
+  p.quantity+=q; if(isNum(+h.wacc)&&+h.wacc>0){ p.cost+=q*h.wacc; p.costQ+=q; } if(h.buy_date&&(!p.buy_date||h.buy_date<p.buy_date)) p.buy_date=h.buy_date; });
+  return Object.values(m).map(p=>({symbol:p.symbol,quantity:p.quantity,wacc:p.costQ?p.cost/p.costQ:NaN,buy_date:p.buy_date})); }
+function heldSymbols(){ const s=new Set(pfLoad().map(h=>h.symbol)); Object.values(SHEETS).forEach(c=>(c.data.holdings||[]).forEach(h=>s.add(h.symbol))); return s; }
 R.portfolio = function(){
-  const el=$('#pg-portfolio');
-  if(!el.dataset.built){ el.dataset.built=1;
-    el.innerHTML=`<div class="pagehead"><h1>My portfolio</h1><p>Holdings stay in this browser and are never uploaded. Advice updates with every daily run.</p></div>
-    <div class="panel"><div class="toolbar"><input id="pSym" placeholder="Symbol" list="symlist" style="width:110px;text-transform:uppercase"><datalist id="symlist">${D.rows.map(r=>`<option value="${r.symbol}">`).join('')}</datalist>
+  const el=$('#pg-portfolio'), srcs=pfSources();
+  if(S.pfSrc===undefined) S.pfSrc=store('nepse_pf_selected')??'local';
+  if(S.pfSrc!=='local' && !srcs[S.pfSrc]) S.pfSrc='local';
+  const isLocal=S.pfSrc==='local', src=isLocal?null:srcs[S.pfSrc];
+  el.innerHTML=`<div class="pagehead"><h1>Portfolio</h1><p>${isLocal?'Holdings saved in this browser only.':'Read live from your Google Sheet; nothing is stored in the public repository.'} Advice updates with every daily run.</p></div>
+  <div class="toolbar" style="margin-bottom:14px"><div class="seg" id="pfSrc"><button data-v="local" class="${isLocal?'on':''}">My holdings</button>${srcs.map((x,i)=>`<button data-v="${i}" class="${S.pfSrc===i?'on':''}">${esc(x.name)}</button>`).join('')}</div>
+    <button class="btn" onclick="showConnect()"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Connect Google Sheet</button></div>
+  <div id="connectBox"></div>
+  ${isLocal?`<div class="panel"><div class="toolbar"><input id="pSym" placeholder="Symbol" list="symlist" style="width:110px;text-transform:uppercase"><datalist id="symlist">${D.rows.map(r=>`<option value="${r.symbol}">`).join('')}</datalist>
       <input id="pQty" type="number" placeholder="Quantity" style="width:110px"><input id="pW" type="number" step="0.01" placeholder="WACC per share" style="width:150px"><input id="pD" type="date" title="Buy date">
       <button class="btn pri" onclick="pfAdd()">Save holding</button>
       <label class="btn" style="cursor:pointer"><svg viewBox="0 0 24 24"><path d="M12 20V9M7 14l5-5 5 5M5 4h14"/></svg>Import CSV<input type="file" id="pFile" accept=".csv,text/csv" class="hide"></label>
       <button class="btn" onclick="pfTemplate()">Download template</button><button class="btn" onclick="pfExport()">Export</button><button class="btn danger" onclick="if(confirm('Remove all holdings from this browser?')){pfSave([]);drawPF()}">Clear all</button></div>
-      <p class="mut" style="font-size:13.5px;margin:10px 0 0">MeroShare’s My WACC export works directly. Add the buy date to get the exact capital gains tax rate and a precise trailing stop.</p></div>
-    <div id="pfOut" class="mt"></div>`;
-    $('#pFile').onchange=async e=>{ const f=e.target.files[0]; if(!f) return; try{ const rows=parseCSV(await f.text()); const cur=pfLoad(); rows.forEach(r=>{ const i=cur.findIndex(x=>x.symbol===r.symbol); i>=0?cur[i]=r:cur.push(r); }); pfSave(cur); toast(`Imported ${rows.length} holdings`); drawPF(); }catch(err){ toast(err.message); } e.target.value=''; };
-  }
+      <p class="mut" style="font-size:13.5px;margin:10px 0 0">MeroShare’s My WACC export works directly. Add the buy date to get the exact capital gains tax rate and a precise trailing stop.</p></div>`
+   :`<div class="panel"><div class="toolbar"><span id="sheetInfo" class="mut" style="font-size:14px">Connecting to ${esc(src.name)}</span>
+      <select id="pfAcct" class="hide"></select><button class="btn" onclick="drawPF(true)"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/></svg>Refresh from sheet</button>
+      <button class="btn" onclick="showConnect(${S.pfSrc})">Edit connection</button><button class="btn danger" onclick="disconnect(${S.pfSrc})">Disconnect</button></div><div id="sheetWarn"></div></div>`}
+  <div id="pfOut" class="mt"></div>`;
+  $('#pfSrc').onclick=e=>{ const v=e.target.dataset.v; if(v===undefined) return; S.pfSrc=v==='local'?'local':+v; S.pfAcct=''; store('nepse_pf_selected',S.pfSrc); R.portfolio(); };
+  if(isLocal) $('#pFile').onchange=async e=>{ const f=e.target.files[0]; if(!f) return; try{ const rows=parseCSV(await f.text()); const cur=pfLoad(); rows.forEach(r=>{ const i=cur.findIndex(x=>x.symbol===r.symbol); i>=0?cur[i]=r:cur.push(r); }); pfSave(cur); toast(`Imported ${rows.length} holdings`); drawPF(); }catch(err){ toast(err.message); } e.target.value=''; };
   drawPF();
 };
+function showConnect(i){
+  const x = i===undefined ? {name:'',url:'',key:''} : pfSources()[i];
+  $('#connectBox').innerHTML=`<div class="panel" style="margin-bottom:14px"><h2>${i===undefined?'Connect a Google Sheet':'Edit connection'}</h2>
+    <p class="sub">Paste the web app address and key from the NEPSE Screener bridge script (see integrations/google_sheets in your repository). They are saved only in this browser.</p>
+    <div class="toolbar"><input id="cName" placeholder="Name, e.g. Samvardhan Capital" value="${esc(x.name)}" style="width:230px">
+      <input id="cUrl" placeholder="https://script.google.com/macros/s/…/exec" value="${esc(x.url)}" style="flex:1;min-width:260px">
+      <input id="cKey" type="password" placeholder="Key" value="${esc(x.key)}" style="width:170px">
+      <button class="btn pri" id="cSave">Test and save</button><button class="btn" onclick="$('#connectBox').innerHTML=''">Cancel</button></div><div id="cMsg" class="mut" style="font-size:13.5px;margin-top:8px"></div></div>`;
+  $('#cSave').onclick=async()=>{ const src={name:$('#cName').value.trim()||'Google Sheet',url:$('#cUrl').value.trim(),key:$('#cKey').value.trim()};
+    if(!/^https:\/\/script\.google(usercontent)?\.com\//.test(src.url)) return $('#cMsg').textContent='The address should start with https://script.google.com/macros/s/';
+    $('#cMsg').textContent='Testing the connection…';
+    try{ const js=await loadSheet(src,true); const all=pfSources(); if(i===undefined){ all.push(src); S.pfSrc=all.length-1; } else { all[i]=src; S.pfSrc=i; }
+      store(SRC_KEY,all); store('nepse_pf_selected',S.pfSrc); toast(`Connected: ${js.holdings.length} positions from “${js.sheet}”`); R.portfolio(); }
+    catch(err){ $('#cMsg').innerHTML=`<span class="down">Could not connect: ${esc(err.message)}.</span> Check the address, the key, and that the web app is deployed with access set to “Anyone”.`; } };
+}
+function disconnect(i){ if(!confirm('Remove this Google Sheet connection from this browser? The sheet itself is not changed.')) return; const all=pfSources(); const [x]=all.splice(i,1); delete SHEETS[x.url]; store(SRC_KEY,all); S.pfSrc='local'; store('nepse_pf_selected','local'); R.portfolio(); toast('Disconnected'); }
+async function currentHoldings(force){
+  if(S.pfSrc==='local' || S.pfSrc===undefined) return {rows:pfLoad(), local:true};
+  const src=pfSources()[S.pfSrc]; const js=await loadSheet(src,force);
+  const accts=js.accounts||[], sel=$('#pfAcct');
+  if(sel){ sel.classList.toggle('hide',accts.length<2); sel.innerHTML=`<option value="">All accounts combined</option>${accts.map(a=>`<option ${a===S.pfAcct?'selected':''}>${esc(a)}</option>`).join('')}`; sel.onchange=e=>{ S.pfAcct=e.target.value; drawPF(); }; }
+  const t=new Date(SHEETS[src.url].t);
+  $('#sheetInfo') && ($('#sheetInfo').innerHTML=`<b style="color:var(--text)">${esc(js.portfolio||src.name)}</b>, tab “${esc(js.sheet)}”, ${js.holdings.length} positions, read at ${t.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}`);
+  $('#sheetWarn') && ($('#sheetWarn').innerHTML=(js.warnings||[]).map(w=>`<div class="notice" style="margin:10px 0 0">${esc(w)}</div>`).join(''));
+  const rows=(js.holdings||[]).filter(h=>!S.pfAcct||h.account===S.pfAcct);
+  return {rows:combine(rows), local:false};
+}
 function pfAdd(){ const s=$('#pSym').value.trim().toUpperCase(), q=parseFloat($('#pQty').value), w=parseFloat($('#pW').value), d=$('#pD').value;
   if(!s||!(q>0)) return toast('Enter a symbol and a quantity'); const cur=pfLoad(), i=cur.findIndex(x=>x.symbol===s), row={symbol:s,quantity:q,wacc:w,buy_date:d}; i>=0?cur[i]=row:cur.push(row); pfSave(cur);
   ['#pSym','#pQty','#pW','#pD'].forEach(k=>$(k).value=''); toast(`Saved ${s}`); drawPF(); }
@@ -868,7 +940,7 @@ function dl(name, text){ const a=document.createElement('a'); a.href=URL.createO
 function pfTemplate(){ dl('portfolio_template.csv','symbol,quantity,wacc,buy_date\nNABIL,100,520.50,2025-06-15\n'); }
 function pfExport(){ dl('my_portfolio.csv','symbol,quantity,wacc,buy_date\n'+pfLoad().map(x=>[x.symbol,x.quantity,isNum(x.wacc)?x.wacc:'',x.buy_date||''].join(',')).join('\n')); }
 async function analyzePF(holdings){
-  const P=PFC(), k=P.atr_stop_multiple??3, hard=P.hard_stop_pct??.15, maxW=P.max_position_weight??.2, maxSW=P.max_sector_weight??.4, redF=P.reduce_fraction??.5, taxWin=P.tax_wait_window_days??30;
+  const P=PFC(), k0=P.atr_stop_multiple??3, hard=P.hard_stop_pct??.15, maxW=P.max_position_weight??.2, maxSW=P.max_sector_weight??.4, redF=P.reduce_fraction??.5, taxWin=P.tax_wait_window_days??30;
   const c=COST(), lt=c.long_term_days||365, reg=D.market.regime, today=new Date(D.meta.last_trade_date);
   const pos=[], unknown=[]; let total=0;
   for(const h of holdings){ const r=D.by[h.symbol]; if(!r){ unknown.push(h.symbol); continue; } const value=h.quantity*r.close; total+=value; pos.push({h,r,value}); }
@@ -879,6 +951,7 @@ async function analyzePF(holdings){
     const hist=await getHistory(h.symbol); let peak=r.close, recent=r.close;
     if(hist){ const n=hist.d.length, bd=h.buy_date?new Date(h.buy_date):null; let st=bd?hist.d.findIndex(d=>new Date(d)>=bd):n-60; if(st<0) st=n-1; st=Math.max(st,n-120,0);
       peak=Math.max(...hist.c.slice(st).filter(isNum),r.close); recent=Math.max(...hist.c.slice(Math.max(0,n-20)).filter(isNum),r.close); }
+    const k=isNum(r.stop_mult)?r.stop_mult:k0, size=isNum(r.pos_size)?r.pos_size:1;
     let stop=isNum(r.atr_14)?peak-k*r.atr_14:null, basis=`${k}× ATR below the high of ${fmt.n(peak,1)}`, reset=false;
     if(stop!==null&&r.close<stop&&code>=1){ stop=recent-k*r.atr_14; basis=`${k}× ATR below the 20-day high of ${fmt.n(recent,1)}`; reset=true; }
     if(r.st_dir>0&&isNum(r.st_line)&&(stop===null||r.st_line>stop)){ stop=r.st_line; basis='Supertrend support'; }
@@ -889,7 +962,8 @@ async function analyzePF(holdings){
     else if(r.close<wacc*(1-hard)&&code<=0){ action='EXIT'; detail=`Down more than ${fmt.p(hard,0)} from your cost with no supporting trend. Cut the loss.`; sellQty=h.quantity; }
     else if(code===-1){ action='REDUCE'; sellQty=Math.floor(h.quantity*redF); detail=(r.rsi_14>((D.meta.settings.scoring||{}).overbought_rsi||80)&&r.close>wacc)?'Overextended rally. Book part of the profit.':'Trend is weakening. Reduce and keep the rest under the stop.'; }
     else if(weight>maxW){ action='REDUCE'; sellQty=Math.floor(h.quantity*(1-maxW/weight)); detail=`This is ${fmt.p(weight,0)} of your portfolio, above the ${fmt.p(maxW,0)} limit. Trim to control risk.`; }
-    else if(code>=1&&reg>=0&&weight<maxW*.8&&sw<maxSW){ action='ADD'; detail=`Rated ${code===2?'strong buy':'buy'} in an uptrend. Adding on dips is reasonable.`; }
+    else if(code>=1&&weight<maxW*.8&&sw<maxSW){ action='ADD'; detail=`Rated ${code===2?'strong buy':'buy'} in an uptrend. Adding on dips is reasonable.`+(size<1?` Keep any addition to about ${fmt.p(size,0)} of a normal position for this market.`:''); }
+    else if(r.accumulate&&weight<maxW*.8&&sw<maxSW){ action='ADD'; detail=`Accumulate: cheap against sector peers with solid ROE and the price stabilising. Build gradually in small lots, about ${fmt.p(size,0)} of a normal position at a time.`; }
     const notes=[];
     if(action!=='EXIT'&&br.gain>0&&toLT>0&&toLT<=taxWin) notes.push(`Hold ${toLT} more days to pay ${fmt.p(c.cgt_long_term,2)} tax instead of ${fmt.p(c.cgt_short_term,0)}, saving about Rs ${fmt.i(br.gain*((c.cgt_short_term||.05)-(c.cgt_long_term||.0375)))}.`);
     if(sw>maxSW) notes.push(`${r.sector} is ${fmt.p(sw,0)} of the portfolio (limit ${fmt.p(maxSW,0)}).`);
@@ -902,15 +976,18 @@ async function analyzePF(holdings){
   const ord={EXIT:0,REDUCE:1,ADD:2,HOLD:3}; out.sort((a,b)=>ord[a.action]-ord[b.action]||b.value-a.value);
   return {out,total,secVal,unknown};
 }
-async function drawPF(){
-  const holdings=pfLoad(), el=$('#pfOut');
-  if(!holdings.length){ el.innerHTML='<div class="panel empty"><b>No holdings yet</b>Add a stock above or import your MeroShare WACC file to get buy more, hold, reduce or exit advice for each position.</div>'; return; }
+async function drawPF(force){
+  const el=$('#pfOut'); if(!el) return;
   el.innerHTML='<div class="panel empty">Working out your advice</div>';
+  let holdings, local=true;
+  try { const c=await currentHoldings(force===true); holdings=c.rows; local=c.local; }
+  catch(err){ el.innerHTML=`<div class="panel empty"><b>Could not read the Google Sheet</b>${esc(err.message)}. Use “Edit connection” to check the address and key, or try “Refresh from sheet”.</div>`; $('#sheetInfo')&&($('#sheetInfo').textContent='Not connected'); return; }
+  if(!holdings.length){ el.innerHTML= local ? '<div class="panel empty"><b>No holdings yet</b>Add a stock above, import your MeroShare WACC file, or connect a Google Sheet to get buy more, hold, reduce or exit advice for each position.</div>' : '<div class="panel empty"><b>No open positions in the sheet</b>Check that the tab has symbol and quantity columns with quantities above zero.</div>'; return; }
   const {out,total,secVal,unknown}=await analyzePF(holdings);
   const cost=out.reduce((a,p)=>a+p.cost,0), pnl=total-cost, P=PFC(), maxSW=P.max_sector_weight??.4, reg=D.market.regime;
   const held=new Set(out.map(p=>p.symbol)), over=new Set(Object.entries(secVal).filter(([s,v])=>v/total>maxSW).map(([s])=>s));
-  const ideas=D.rows.filter(r=>r.stance_code>=1&&!held.has(r.symbol)&&!over.has(r.sector)).sort((a,b)=>b.score-a.score).slice(0,8);
-  const advice=reg>0?'Bull market. Stay invested and let winners run with trailing stops.':reg===0?'Sideways market. Be selective, take profits sooner and keep some cash.':`Bear market. Protect capital: aim for about ${fmt.p(P.bear_market_cash_target??.4,0)} cash and don’t average down.`;
+  const ideas=D.rows.filter(r=>(r.stance_code>=1||r.accumulate)&&!held.has(r.symbol)&&!over.has(r.sector)).sort((a,b)=>b.score-a.score).slice(0,8);
+  const advice=reg>=1?'Bull market. Stay invested and let winners run with trailing stops.':reg>0?'Recovery phase. Early-bottom signals: add selectively at half size with 2.5× ATR stops.':reg===0?'Sideways market. Be selective, take profits sooner and keep some cash.':`Bear market. Protect capital: aim for about ${fmt.p(P.bear_market_cash_target??.4,0)} cash. Buy only sector leaders or Accumulate-rated value stocks, in small lots.`;
   const cnt=a=>out.filter(p=>p.action===a).length;
   el.innerHTML=`${unknown.length?`<div class="notice">Not found in the screener: ${unknown.map(esc).join(', ')}. Check the symbols.</div>`:''}
   <div class="strip"><div><div class="k">Market value</div><div class="v">Rs ${fmt.npr(total)}</div><div class="s">Cost Rs ${fmt.npr(cost)}</div></div>
@@ -921,15 +998,15 @@ async function drawPF(){
     ${out.map(p=>`<tr><td><a href="#" onclick="openStock('${p.symbol}');return false" class="sym">${p.symbol}</a><span class="nm">${esc(p.r.sector)}</span></td>
       <td>${actCall(p.action)}${p.sellQty?`<span class="nm">sell ${fmt.i(p.sellQty)}</span>`:''}</td><td class="num">${fmt.i(p.quantity)}</td><td class="num">${fmt.n(p.wacc)}</td><td class="num">${fmt.n(p.r.close)}</td>
       <td class="num ${tone(p.pnl)}">${fmt.npr(p.pnl)}<span class="nm" style="text-align:right">${fmt.sp(p.pnlPct)}</span></td><td class="num">${fmt.p(p.weight,0)}</td>
-      <td>${call(p.r.stance_code)}<span class="nm">score ${fmt.n(p.r.score,0)}</span></td><td class="num" title="${esc(p.basis)}">${fmt.n(p.stop)}<span class="nm" style="text-align:right">${p.basis.startsWith('Super')?'Supertrend':'ATR trail'}</span></td>
+      <td>${callR(p.r)}<span class="nm">score ${fmt.n(p.r.score,0)}</span></td><td class="num" title="${esc(p.basis)}">${fmt.n(p.stop)}<span class="nm" style="text-align:right">${p.basis.startsWith('Super')?'Supertrend':'ATR trail'}</span></td>
       <td class="num">${fmt.npr(p.br.net)}<span class="nm ${tone(p.br.profit)}" style="text-align:right">${fmt.npr(p.br.profit)} profit</span></td>
       <td>${fmt.p(p.br.rate,2)}${p.days!==null?`<span class="nm">${p.days} days held${p.toLT?`, long-term in ${p.toLT}`:''}</span>`:''}</td>
       <td style="white-space:normal;min-width:260px;font-size:13.5px">${esc(p.detail)}${p.notes.length?`<div class="mut" style="margin-top:3px">${p.notes.map(esc).join('<br>')}</div>`:''}</td>
-      <td><button class="iconbtn" style="width:30px;height:30px" onclick="pfDel('${p.symbol}')" aria-label="Remove ${p.symbol}"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></td></tr>`).join('')}</tbody></table></div>
+      <td>${local?`<button class="iconbtn" style="width:30px;height:30px" onclick="pfDel('${p.symbol}')" aria-label="Remove ${p.symbol}"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>`:''}</td></tr>`).join('')}</tbody></table></div>
   <p class="mut" style="font-size:13px">Cash if sold is after commission, SEBON fee, DP charge and capital gains tax at today’s price.</p>
   <div class="grid cols-2 mt"><div class="panel"><h2>Sector mix</h2><p class="sub">Limit ${fmt.p(maxSW,0)} per sector</p><div id="donut"></div></div>
-    <div class="panel"><h2>Ideas for new money</h2><p class="sub">Highest-scoring buys outside your over-weight sectors</p>
-      ${ideas.length?ideas.map(r=>`<div class="pick" onclick="openStock('${r.symbol}')">${starBtn(r.symbol)}<div><span style="font-weight:700">${r.symbol}</span> ${call(r.stance_code)}<span class="mut" style="display:block;font-size:12.5px">${esc(r.sector)}</span></div>${spark(r.spark,72,26)}<div class="score num">${fmt.n(r.score,0)}</div></div>`).join('')
+    <div class="panel"><h2>Ideas for new money</h2><p class="sub">Highest-scoring buys and accumulate calls outside your over-weight sectors, with the suggested size for this market</p>
+      ${ideas.length?ideas.map(r=>`<div class="pick" onclick="openStock('${r.symbol}')">${starBtn(r.symbol)}<div><span style="font-weight:700">${r.symbol}</span> ${callR(r)}<span class="mut" style="display:block;font-size:12.5px">${esc(r.sector)}</span></div>${spark(r.spark,72,26)}<div class="score num">${fmt.n(r.score,0)}</div></div>`).join('')
         :`<div class="empty"><b>No buy candidates</b>${reg<0?'Buying is paused in a bear market.':'Nothing meets the buy rules today.'}</div>`}</div></div>`;
   donut($('#donut'), Object.entries(secVal).sort((a,b)=>b[1]-a[1]).map(([s,v],i)=>({l:s,v,c:PAL[i%PAL.length],warn:v/total>maxSW})));
 }
@@ -943,7 +1020,7 @@ R.track = function(){
   const src=T[S.trackSrc]||{}, H=S.trackH, hz=T.horizons||[5,20,60], rows=src.by_stance||[], ic=src.ic||{};
   const buy=rows.filter(r=>r.direction>0), sell=rows.filter(r=>r.direction<0);
   const wavg=(rs,k)=>{ let n=0,s=0; rs.forEach(r=>{ if(isNum(r[k])){ s+=r[k]*r['n_'+H]; n+=r['n_'+H]; } }); return n?s/n:null; };
-  const mine=new Set(pfLoad().map(h=>h.symbol)), recent=T.live.recent||[], list=S.trackMine?recent.filter(r=>mine.has(r.symbol)):recent;
+  const mine=heldSymbols(), recent=T.live.recent||[], list=S.trackMine?recent.filter(r=>mine.has(r.symbol)):recent;
   el.innerHTML=`<div class="pagehead"><h1>Track record</h1><p>Every call is saved and checked against the real price and the NEPSE index ${hz.join(', ')} sessions later.</p></div>
   <div class="toolbar"><div class="seg" id="tSrc"><button data-v="live" class="${S.trackSrc==='live'?'on':''}">Live calls</button><button data-v="simulated" class="${S.trackSrc==='simulated'?'on':''}">Simulated history</button></div>
     <div class="seg" id="tH">${hz.map(h=>`<button data-v="${h}" class="${h===H?'on':''}">After ${h} sessions</button>`).join('')}</div>
@@ -955,7 +1032,7 @@ R.track = function(){
     <div><div class="k">Top vs bottom fifth by score</div><div class="v"><span class="${tone(ic.top_quintile_ret)}">${fmt.sp(ic.top_quintile_ret)}</span> <span class="faint">/</span> <span class="${tone(ic.bottom_quintile_ret)}">${fmt.sp(ic.bottom_quintile_ret)}</span></div><div class="s">average return after ${ic.horizon||T.main_horizon} sessions</div></div></div>
   <div class="grid split mt"><div class="panel"><h2>Results by call</h2><p class="sub">A buy call is a hit if the stock beat the NEPSE index; a reduce or exit call is a hit if it lagged.</p>
     <table class="plain"><thead><tr><th>Call</th><th class="num">Calls</th><th class="num">Scored</th><th class="num">Hit vs NEPSE</th><th class="num">Hit, absolute</th><th class="num">Avg return</th><th class="num">Avg vs NEPSE</th></tr></thead><tbody>
-    ${rows.map(r=>`<tr><td>${call(STANCE_CODE[r.label])}</td><td class="num">${fmt.i(r.calls)}</td><td class="num">${fmt.i(r['n_'+H])}</td><td class="num"><b>${fmt.p(r['hit_'+H],0)}</b></td><td class="num">${fmt.p(r['abs_hit_'+H],0)}</td><td class="num ${tone(r['avg_ret_'+H])}">${fmt.sp(r['avg_ret_'+H])}</td><td class="num ${tone(r['avg_excess_'+H])}">${fmt.sp(r['avg_excess_'+H])}</td></tr>`).join('')}</tbody></table></div>
+    ${rows.map(r=>`<tr><td>${callLbl(r.label)}</td><td class="num">${fmt.i(r.calls)}</td><td class="num">${fmt.i(r['n_'+H])}</td><td class="num"><b>${fmt.p(r['hit_'+H],0)}</b></td><td class="num">${fmt.p(r['abs_hit_'+H],0)}</td><td class="num ${tone(r['avg_ret_'+H])}">${fmt.sp(r['avg_ret_'+H])}</td><td class="num ${tone(r['avg_excess_'+H])}">${fmt.sp(r['avg_excess_'+H])}</td></tr>`).join('')}</tbody></table></div>
     <div class="panel"><h2>The staircase</h2><p class="sub">Average return vs NEPSE by call. A working model steps down from strong buy to exit.</p><div id="stair"></div></div></div>
   <div class="grid cols-2 mt"><div class="panel"><h2>Monthly hit rate of buy calls</h2><p class="sub">${T.main_horizon}-session horizon; the dashed line is a coin flip</p><div id="monthly"></div></div>
     <div class="panel"><h2>Where the model works best</h2><p class="sub">Buy calls, ${T.main_horizon} sessions</p>
@@ -968,12 +1045,12 @@ R.track = function(){
   <div class="panel mt"><div class="panel-head"><div><h2>Recent calls and outcomes</h2><p class="sub">Stored permanently in data/tracking/recommendations.csv</p></div>
     <label style="display:flex;gap:6px;align-items:center;font-size:14px"><input type="checkbox" id="tMine" ${S.trackMine?'checked':''}> Only stocks I hold</label></div>
     <div class="tbl" style="max-height:480px"><table><thead><tr><th>Date</th><th>Stock</th><th>Call</th><th class="num">Score</th><th class="num">Price</th>${hz.map(h=>`<th class="num">${h}-day return</th><th class="num">vs NEPSE</th>`).join('')}</tr></thead><tbody>
-    ${list.slice(0,300).map(r=>`<tr class="row" onclick="openStock('${r.symbol}')"><td>${r.date}</td><td class="sym">${r.symbol}</td><td>${call(STANCE_CODE[r.stance])}</td><td class="num">${fmt.n(r.score,0)}</td><td class="num">${fmt.n(r.close)}</td>${hz.map(h=>`<td class="num ${tone(r['ret_'+h])}">${isNum(r['ret_'+h])?fmt.sp(r['ret_'+h]):'<span class="faint">waiting</span>'}</td><td class="num ${tone(r['excess_'+h])}">${fmt.sp(r['excess_'+h])}</td>`).join('')}</tr>`).join('')||`<tr><td colspan="11"><div class="empty">No live calls logged yet.</div></td></tr>`}</tbody></table></div></div>`;
+    ${list.slice(0,300).map(r=>`<tr class="row" onclick="openStock('${r.symbol}')"><td>${r.date}</td><td class="sym">${r.symbol}</td><td>${callLbl(r.stance)}</td><td class="num">${fmt.n(r.score,0)}</td><td class="num">${fmt.n(r.close)}</td>${hz.map(h=>`<td class="num ${tone(r['ret_'+h])}">${isNum(r['ret_'+h])?fmt.sp(r['ret_'+h]):'<span class="faint">waiting</span>'}</td><td class="num ${tone(r['excess_'+h])}">${fmt.sp(r['excess_'+h])}</td>`).join('')}</tr>`).join('')||`<tr><td colspan="11"><div class="empty">No live calls logged yet.</div></td></tr>`}</tbody></table></div></div>`;
   $('#tSrc').onclick=e=>{ if(e.target.dataset.v){ S.trackSrc=e.target.dataset.v; R.track(); } };
   $('#tH').onclick=e=>{ if(e.target.dataset.v){ S.trackH=+e.target.dataset.v; R.track(); } };
   $('#tMine').onchange=e=>{ S.trackMine=e.target.checked; R.track(); };
   const ex=rows.map(r=>r['avg_excess_'+H]);
-  makeChart($('#stair'),{cat:true,x:rows.map(r=>STANCE[STANCE_CODE[r.label]]),xlen:12,height:250,right:56,panels:[{zero:false,yfmt:v=>(v*100).toFixed(1)+'%',hlines:[{v:0}],series:[{type:'bar',y:ex,colors:rows.map(r=>({2:'--up',1:'--up-mid',0:'--faint','-1':'--amber','-2':'--down'})[STANCE_CODE[r.label]]),name:'Avg vs NEPSE',fmt:v=>fmt.sp(v,2),tc:'--blue'}]}]});
+  makeChart($('#stair'),{cat:true,x:rows.map(r=>r.label==='ACCUMULATE'?'Accumulate':STANCE[STANCE_CODE[r.label]]),xlen:12,height:250,right:56,panels:[{zero:false,yfmt:v=>(v*100).toFixed(1)+'%',hlines:[{v:0}],series:[{type:'bar',y:ex,colors:rows.map(r=>r.label==='ACCUMULATE'?'--blue':({2:'--up',1:'--up-mid',0:'--faint','-1':'--amber','-2':'--down'})[STANCE_CODE[r.label]]),name:'Avg vs NEPSE',fmt:v=>fmt.sp(v,2),tc:'--blue'}]}]});
   const mo=src.monthly||[];
   if(mo.length) makeChart($('#monthly'),{cat:true,x:mo.map(m=>m.month),xlen:7,height:250,right:46,panels:[{fixed:[0,1],yfmt:v=>(v*100).toFixed(0)+'%',hlines:[{v:.5}],series:[{type:'bar',y:mo.map(m=>m.hit),colors:mo.map(m=>m.hit>=.5?'--up':'--down'),name:'Hit rate',fmt:v=>fmt.p(v,0),tc:'--blue'}]}]});
   else $('#monthly').innerHTML='<div class="empty">Not enough scored calls yet.</div>';
@@ -988,7 +1065,13 @@ R.help = function(){
   <div class="grid cols-2"><div class="panel"><h2>How a call is made</h2><div style="font-size:14.5px;max-width:72ch">
     <p>Each stock gets eight scores from 0 to 100: trend, momentum, volume, timing, sector strength, value and quality against sector peers, and liquidity. They are blended into one composite score.</p>
     <p><b>Strong buy</b> needs a score of ${th.strong_buy} or more, an uptrend and no overbought reading. <b>Buy</b> needs ${th.buy} or more and a price above the 200-day average. <b>Reduce</b> comes below ${th.reduce}, when the trend weakens, or after an overextended rally. <b>Exit</b> comes below ${th.exit} or when the trend breaks.</p>
-    <p>When the NEPSE index is in a bear regime, no buy calls are issued, because Nepali stocks tend to fall together.</p>
+    <p>The market has four regimes: <b>bull</b>, <b>recovery</b> (index back above a rising 50-day average with a breadth thrust or more new highs than lows), <b>neutral</b> and <b>bear</b>. The active rule is <b>${esc(POLICY().mode||'combined')}</b>:</p>
+    <ul style="margin-top:0"><li>The score is reduced in weaker markets (bear −8, neutral −3, recovery −2) and the buy bar rises (bear: buy 70, strong buy 83).</li>
+    <li>Each stock is judged first by its own sector's trend, so a rising sector can still produce buys while NEPSE is weak.</li>
+    <li>In a bear market only leaders (RS 85+, own uptrend, sector rank 70+) can be buys.</li>
+    <li>Suggested position size and stop shrink with the regime: bull 100% and 3× ATR, recovery or neutral 50% and 2.5×, bear 25% and 2×.</li>
+    <li><b>Accumulate</b> marks cheap, good-quality stocks whose price is stabilising in a bear or recovery market: build gradually in small lots.</li></ul>
+    <p>Other rules (hard, soft, leaders, sizing) can be chosen in <code>config/settings.yaml</code>. Compare them on the Strategies page.</p>
     <p>Portfolio advice also uses your position: a trailing stop from the highest close since you bought, a ${fmt.p(PFC().hard_stop_pct,0)} loss limit, position and sector size limits, and the capital gains tax date.</p></div></div>
     <div class="panel"><h2>Costs and tax used</h2><table class="plain"><tbody>
       ${(c.broker_commission_tiers||[]).map(([l,r],i,a)=>`<tr><td>Commission, ${i?'Rs '+fmt.i(a[i-1][0])+' to ':'up to '}${l?'Rs '+fmt.i(l):'and above'}</td><td class="num">${fmt.p(r,2)}</td></tr>`).join('')}

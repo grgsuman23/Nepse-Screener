@@ -134,16 +134,68 @@ strategies:
     defaults: {sec_min: 70}
 
   - id: model_score
-    name: Composite Model (the screener's own BUY calls)
+    name: Composite Model (active regime rule)
     type: rotation
     description: >
-      Follows the screener's composite score: each week hold the 10
-      highest-scoring stocks rated BUY or STRONG BUY, keep them while they stay
-      rated HOLD or better, and step aside in a bear market. This is how the
-      screener's own recommendations would have performed.
+      Follows the screener's own calls under the regime rule set in
+      settings.yaml (default: combined). Each week hold the 10 highest-scoring
+      stocks rated BUY / STRONG BUY or ACCUMULATE, keep them while rated HOLD or
+      better, and size each new position by the market regime (full size in a
+      bull market, half in recovery or neutral, a quarter in a bear market).
     rebalance: weekly
-    filter: "liquid == 1 and stance_code >= 1"
+    filter: "liquid == 1 and (stance_code >= 1 or accumulate == 1)"
     rank_by: score
     hold_while: "stance_code >= 0"
+    size_by: pos_size
+    top_n: 10
+
+  # ---- the same model under each regime rule, for comparison -------------
+  - id: model_hard
+    name: "Regime rule: hard (no buys in a bear market)"
+    type: rotation
+    description: >
+      The original rule: no buy calls while NEPSE is in a bear regime, and the
+      portfolio moves to cash when the regime turns bearish.
+    rebalance: weekly
+    filter: "liquid == 1 and stance_hard >= 1"
+    rank_by: score
+    hold_while: "stance_hard >= 0"
     top_n: 10
     regime_filter: "regime >= 0"
+
+  - id: model_soft
+    name: "Regime rule: soft (score penalty, higher bar)"
+    type: rotation
+    description: >
+      Buys stay possible in any market, but the score is reduced and the buy
+      thresholds rise as the regime weakens (bear: −8 points, buy needs 70).
+    rebalance: weekly
+    filter: "liquid == 1 and stance_soft >= 1"
+    rank_by: score
+    hold_while: "stance_soft >= 0"
+    top_n: 10
+
+  - id: model_leaders
+    name: "Regime rule: leaders only in a bear market"
+    type: rotation
+    description: >
+      Normal thresholds, but in a bear regime only sector-leading stocks
+      (RS 85+, own uptrend, sector rank 70+) can be buys.
+    rebalance: weekly
+    filter: "liquid == 1 and stance_leaders >= 1"
+    rank_by: score
+    hold_while: "stance_leaders >= 0"
+    top_n: 10
+
+  - id: model_sizing
+    name: "Regime rule: sizing (smaller positions, no veto)"
+    type: rotation
+    description: >
+      Normal buy rules in every market; the regime only shrinks each new
+      position (bull 100%, recovery and neutral 50%, bear 25%).
+    rebalance: weekly
+    filter: "liquid == 1 and stance_sizing >= 1"
+    rank_by: score
+    hold_while: "stance_sizing >= 0"
+    size_by: pos_size_sizing
+    top_n: 10
