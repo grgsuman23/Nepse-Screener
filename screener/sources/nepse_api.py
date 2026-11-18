@@ -119,6 +119,51 @@ class NepseApi:
         df = normalize_records(recs if isinstance(recs, list) else [], with_symbol=True)
         return df
 
+    # ---------------- live (during market hours) ----------------
+    def live(self) -> pd.DataFrame:
+        """Live market: one row per traded stock with the latest price.
+        Falls back to today's price-volume table when the live feed is empty."""
+        data = []
+        for fn in ("getLiveMarket", "getPriceVolume"):
+            try:
+                data = getattr(self.n, fn)() or []
+            except Exception as e:  # noqa: BLE001
+                log.warning("NEPSE %s failed: %r", fn, e)
+                data = []
+            if isinstance(data, dict):
+                data = data.get("content", [])
+            if data:
+                break
+        rows = []
+        for r in data:
+            sym = str(_pick(r, "symbol") or "").upper()
+            close = to_num(_pick(r, "close"))
+            if not sym or not close or close != close:
+                continue
+            rows.append({"symbol": sym, "open": to_num(_pick(r, "open")), "high": to_num(_pick(r, "high")),
+                         "low": to_num(_pick(r, "low")), "close": close, "volume": to_num(_pick(r, "volume")),
+                         "turnover": to_num(_pick(r, "turnover")), "prev_close": to_num(_pick(r, "prev_close")),
+                         "updated": r.get("lastUpdatedDateTime") or r.get("lastUpdatedTime")})
+        return pd.DataFrame(rows)
+
+    def index_live(self) -> dict | None:
+        """Current NEPSE index value (live during the session)."""
+        data = self.n.getNepseIndex() or []
+        for r in data if isinstance(data, list) else []:
+            name = str(r.get("index") or r.get("indexName") or "").strip().lower()
+            if name in ("nepse index", "nepse"):
+                cur = to_num(r.get("currentValue") or r.get("close"))
+                return {"close": cur, "high": to_num(r.get("high")), "low": to_num(r.get("low")),
+                        "prev_close": to_num(r.get("previousClose")), "time": r.get("generatedTime")}
+        return None
+
+    def market_open(self) -> bool | None:
+        try:
+            st = self.n.getMarketStatus() or {}
+            return "OPEN" in str(st.get("isOpen", "")).upper()
+        except Exception:  # noqa: BLE001
+            return None
+
     def index_history(self) -> pd.DataFrame:
         """NEPSE index daily graph -> DataFrame[date, close]."""
         data = self.n.getDailyNepseIndexGraph()

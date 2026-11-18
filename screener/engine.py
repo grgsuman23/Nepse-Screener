@@ -56,7 +56,7 @@ PRICE_FIELDS = ["open", "high", "low", "close", "volume", "turnover"]
 
 
 def build(cfg: dict, paths: Paths, prices: dict[str, pd.DataFrame] | None = None,
-          start: str | None = None) -> Analysis:
+          start: str | None = None, index_extra: pd.DataFrame | None = None) -> Analysis:
     warnings: list[str] = []
     uni = store.read_universe(paths)
     prices = prices if prices is not None else store.load_all_prices(paths, uni["symbol"].tolist() if len(uni) else None)
@@ -108,6 +108,10 @@ def build(cfg: dict, paths: Paths, prices: dict[str, pd.DataFrame] | None = None
 
     # --- market index & regime
     idx = store.read_index(paths, cfg.get("regime", {}).get("index_symbol", "NEPSE"))
+    if index_extra is not None and len(index_extra):  # live (provisional) index value for today
+        idx = pd.concat([idx, index_extra], ignore_index=True)
+        idx["date"] = pd.to_datetime(idx["date"])
+        idx = idx.drop_duplicates("date", keep="last").sort_values("date").reset_index(drop=True)
     index_source = "official"
     if len(idx) > 200:
         index_close = idx.set_index("date")["close"].reindex(calendar).ffill()

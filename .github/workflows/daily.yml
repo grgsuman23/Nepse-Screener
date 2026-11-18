@@ -1,9 +1,10 @@
 name: Daily update
 
-# NEPSE closes at 3:00 PM Nepal time (09:15 UTC). Run at 3:50 PM NPT, Sunday–Thursday.
+# NEPSE closes at 3:00 PM Nepal time (09:15 UTC). Run at 3:50 PM NPT, Sunday–Friday
+# (NEPSE moved between Sun–Thu and Mon–Fri weeks; holidays simply find no new data).
 on:
   schedule:
-    - cron: "5 10 * * 0-4"
+    - cron: "5 10 * * 0-5"
   workflow_dispatch:
 
 permissions:
@@ -30,6 +31,7 @@ jobs:
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           ALERT_TO: ${{ secrets.ALERT_TO }}
           PORTFOLIO_CSV: ${{ secrets.PORTFOLIO_CSV }}
+          SHEET_PORTFOLIOS: ${{ secrets.SHEET_PORTFOLIOS }}
           DASHBOARD_URL: ${{ secrets.DASHBOARD_URL }}
         run: python run.py daily
       - name: Save data & dashboard

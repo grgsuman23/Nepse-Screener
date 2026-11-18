@@ -1,0 +1,37 @@
+name: Intraday update
+
+# Every 15 minutes while NEPSE is open (11:00–15:00 Nepal time = 05:15–09:15 UTC),
+# Sunday–Friday. GitHub may start scheduled runs a few minutes late.
+on:
+  schedule:
+    - cron: "*/15 5-9 * * 0-5"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: screener-data
+  cancel-in-progress: false
+
+jobs:
+  intraday:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Live prices → provisional scores and calls
+        run: python run.py intraday
+      - name: Publish
+        run: |
+          git config user.name "nepse-screener-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data docs/data
+          git diff --cached --quiet || git commit -m "Intraday $(TZ=Asia/Kathmandu date +%H:%M) NPT"
+          git pull --rebase --autostash || true
+          git push

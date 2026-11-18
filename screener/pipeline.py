@@ -9,6 +9,7 @@ import re
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 from . import store
@@ -24,7 +25,31 @@ def nepal_today() -> date:
 
 
 def is_trading_weekday(d: date) -> bool:
-    return d.weekday() in (6, 0, 1, 2, 3)  # Sun–Thu
+    """NEPSE has traded Sun–Thu in the past and Mon–Fri more recently, so every
+    day except Saturday is tried; holidays simply return no data."""
+    return d.weekday() != 5
+
+
+def best_day_offset(truth: pd.DataFrame, other: pd.DataFrame, max_shift: int = 3) -> int | None:
+    """Find k so that other.date + k days lines up with truth.date (OHLC match)."""
+    if truth is None or other is None or len(truth) < 8 or len(other) < 8:
+        return None
+    a = truth[["date", "open", "high", "low", "close"]].copy()
+    a["date"] = pd.to_datetime(a["date"]).dt.normalize()
+    best, best_score = None, 0.0
+    for k in range(-max_shift, max_shift + 1):
+        b = other[["date", "open", "high", "low", "close"]].copy()
+        b["date"] = pd.to_datetime(b["date"]).dt.normalize() + pd.Timedelta(days=k)
+        m = a.merge(b, on="date", suffixes=("_a", "_b"))
+        if len(m) < 6:
+            continue
+        same = np.ones(len(m), dtype=bool)
+        for c in ("open", "high", "low", "close"):
+            same &= (m[f"{c}_a"] - m[f"{c}_b"]).abs().to_numpy() <= 0.011
+        score = same.mean()
+        if score > best_score:
+            best, best_score = k, score
+    return best if best_score >= 0.8 else None
 
 
 class Pipeline:
@@ -36,6 +61,8 @@ class Pipeline:
         self.http = Http(delay=dc.get("request_delay_sec", 0.7), timeout=dc.get("request_timeout_sec", 25))
         self._nepse = None
         self._nepse_tried = False
+        self._mero = None
+        self.day_offset: int | None = None
         self.status = read_json(paths.status, {}) or {}
 
     # ------------------------------------------------------------ sources
@@ -50,9 +77,79 @@ class Pipeline:
 
     @property
     def mero(self):
-        from .sources.merolagani import Merolagani
+        if self._mero is None:
+            from .sources.merolagani import Merolagani
 
-        return Merolagani(self.http)
+            self._mero = Merolagani(self.http, day_offset=self.merolagani_offset())
+        return self._mero
+
+    # ------------------------------------------------------------ date calibration
+    def merolagani_offset(self) -> int:
+        """Measure how many days Merolagani's bar dates must move to match NEPSE's
+        official business dates. Falls back to the last measured value."""
+        if self.day_offset is not None:
+            return self.day_offset
+        f = self.paths.data / "calibration.json"
+        cal = read_json(f, {}) or {}
+        off, how = None, ""
+        if self.nepse is not None:
+            from .sources.merolagani import Merolagani
+
+            raw = Merolagani(self.http, 0)
+            start = nepal_today() - timedelta(days=75)
+            for sym in ("NABIL", "NTC", "NICA", "SCB", "HDL", "UPPER"):
+                try:
+                    k = best_day_offset(self.nepse.history(sym, start), raw.history(sym, start, adjusted=False))
+                except Exception as e:  # noqa: BLE001
+                    log.debug("calibration with %s failed: %r", sym, e)
+                    continue
+                if k is not None:
+                    off, how = k, f"measured on {sym}"
+                    break
+        if off is None:
+            off = int(cal.get("merolagani_day_offset", -1))
+            how = "last measured value" if "merolagani_day_offset" in cal else "default (observed Nov 2026)"
+        self.day_offset = off
+        cal["merolagani_day_offset"] = off
+        cal["checked"] = datetime.now(timezone.utc).replace(tzinfo=None).strftime("%Y-%m-%d %H:%M UTC")
+        write_json(f, cal)
+        self._mark("merolagani:date_offset", True, f"{off:+d} day(s), {how}")
+        log.info("Merolagani date offset: %+d day(s) (%s)", off, how)
+        return off
+
+    def repair_dates(self) -> None:
+        """One-time fix: data saved before calibration existed carries Merolagani's
+        raw (shifted) dates. Move every stored series and ledger into line."""
+        f = self.paths.data / "calibration.json"
+        cal = read_json(f, {}) or {}
+        stored = int(cal.get("stored_offset", 0))
+        off = self.merolagani_offset()
+        cal = read_json(f, {}) or {}
+        k = off - stored
+        if k == 0 or not store.stored_symbols(self.paths):
+            cal["stored_offset"] = off
+            write_json(f, cal)
+            return
+        log.warning("Repairing stored dates by %+d day(s)", k)
+        delta = pd.Timedelta(days=k)
+        for sym in store.stored_symbols(self.paths):
+            df = store.read_prices(self.paths, sym)
+            df["date"] = df["date"] + delta
+            store.write_prices(self.paths, sym, df)
+        for idx_file in self.paths.index.glob("*.csv"):
+            df = store.read_index(self.paths, idx_file.stem)
+            df["date"] = df["date"] + delta
+            store.write_index(self.paths, df, idx_file.stem)
+        for led in list(self.paths.tracking.glob("*.csv")) + [self.paths.corporate_actions]:
+            if led.exists():
+                df = pd.read_csv(led, dtype={"symbol": str})
+                if "date" in df:
+                    df["date"] = (pd.to_datetime(df["date"]) + delta).dt.strftime("%Y-%m-%d")
+                    df.to_csv(led, index=False)
+        cal["stored_offset"] = off
+        cal["repaired"] = datetime.now(timezone.utc).replace(tzinfo=None).strftime("%Y-%m-%d %H:%M UTC")
+        write_json(f, cal)
+        self._mark("data:date_repair", True, f"stored dates moved {k:+d} day(s)")
 
     @property
     def sansar(self):
@@ -132,6 +229,7 @@ class Pipeline:
         return pd.DataFrame(), ""
 
     def backfill(self, symbols: list[str] | None = None, force: bool = False, limit: int | None = None) -> None:
+        self.repair_dates()
         uni = store.read_universe(self.paths)
         if uni.empty:
             uni = self.build_universe()
@@ -204,6 +302,7 @@ class Pipeline:
         return n
 
     def update_daily(self, days_back: int = 10) -> None:
+        self.repair_dates()
         uni = store.read_universe(self.paths)
         symbols = set(uni["symbol"]) if len(uni) else set(store.stored_symbols(self.paths))
         today = nepal_today()
@@ -241,8 +340,8 @@ class Pipeline:
                         self._mark("merolagani:history", True, f"refreshed {n} stocks")
                         done = n > 0
                 except Exception as e:
-                    self._mark(f"{src}:daily", False, f"{d}: {e}")
-                    log.warning("%s failed for %s: %s", src, d, e)
+                    self._mark(f"{src}:daily", False, f"{d}: {type(e).__name__} {e}")
+                    log.warning("%s failed for %s: %r", src, d, e)
                 if done:
                     break
             if not done:

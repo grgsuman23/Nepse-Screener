@@ -1,6 +1,6 @@
 // NEPSE Screener service worker: the app shell works offline, data is
 // fetched fresh when online and served from cache when offline.
-const VERSION = 'nepse-screener-v2';
+const VERSION = 'nepse-screener-v3';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icons/icon.svg', './icons/icon-192.png', './icons/icon-512.png'];
 
 self.addEventListener('install', e => {
@@ -12,6 +12,8 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET') return;
+  // never cache other sites (e.g. your Google Sheet bridge) — let the browser fetch them directly
+  if (url.origin !== location.origin && !url.host.includes('fonts.g')) return;
   const isData = url.pathname.includes('/data/');
   const isPage = e.request.mode === 'navigate' || url.pathname.endsWith('/index.html');
   if (isData || isPage) {

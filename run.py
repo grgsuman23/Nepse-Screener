@@ -7,6 +7,7 @@
   python run.py fundamentals             refresh EPS / P/E / book value ...
   python run.py analyze                  indicators, scores, screens, backtests, tracker, dashboard data
   python run.py daily                    update + (weekly) fundamentals + analyze + e-mail
+  python run.py intraday                 live prices every ~15 min during market hours (provisional)
   python run.py optimize [--strategy id] parameter search with out-of-sample test
   python run.py portfolio --file my.csv  print buy/hold/exit advice for a holdings file
   python run.py demo                     build the dashboard from synthetic demo data
@@ -62,17 +63,28 @@ def cmd_analyze(cfg, paths, args, demo: bool = False):
     # ---- tracker (permanent ledgers)
     tracker.log_recommendations(a, paths, cfg)
     tracker.log_strategy_signals(a, paths, current)
-    pf = None
+    # ---- portfolios: CSV (file / PORTFOLIO_CSV secret) and Google Sheets (SHEET_PORTFOLIOS secret)
+    from screener import sheets
+    from screener.portfolio import analyze as pf_analyze, load_portfolio
+
+    holdings_sets = []
     pf_src = getattr(args, "portfolio", None) or os.environ.get("PORTFOLIO_CSV")
     if pf_src:
-        from screener.portfolio import analyze as pf_analyze, load_portfolio
-
         try:
-            pf = pf_analyze(a, load_portfolio(pf_src), cfg)
-            if cfg.get("tracking", {}).get("log_portfolio_actions"):
-                tracker.log_portfolio_actions(a, paths, pf)
+            holdings_sets.append(("My portfolio", load_portfolio(pf_src)))
         except Exception as e:  # noqa: BLE001
-            log.warning("Portfolio analysis failed: %s", e)
+            log.warning("Portfolio CSV could not be read: %s", e)
+    holdings_sets += sheets.fetch_all(os.environ.get("SHEET_PORTFOLIOS"))
+    portfolios = []
+    for name, holdings in holdings_sets:
+        try:
+            res = pf_analyze(a, holdings, cfg)
+            portfolios.append((name, res))
+            if cfg.get("tracking", {}).get("log_portfolio_actions"):
+                tracker.log_portfolio_actions(a, paths, res)
+        except Exception as e:  # noqa: BLE001
+            log.warning("Portfolio analysis failed for %s: %s", name, e)
+    pf = portfolios[0][1] if portfolios else None
     tracking = tracker.evaluate_all(a, paths, cfg)
     export_all(a, paths, cfg, presets, hits, strategies_json, tracking, demo=demo)
     log.info("Dashboard data written to %s (%.1fs total)", paths.out, time.time() - t0)
@@ -83,9 +95,70 @@ def cmd_analyze(cfg, paths, args, demo: bool = False):
         market = read_json(paths.out / "market.json")
         rows = read_json(paths.out / "screener.json")["rows"]
         top = sorted([r for r in rows if (r.get("stance_code") or 0) >= 1], key=lambda r: -(r.get("score") or 0))[:8]
-        html = alerts.build_html(market, pf, strategies_json, top, tracking, os.environ.get("DASHBOARD_URL"))
+        html = alerts.build_html(market, portfolios, strategies_json, top, tracking, os.environ.get("DASHBOARD_URL"))
         alerts.send(f"{cfg['alerts'].get('subject_prefix', '[NEPSE]')} {market['date']} · {market['regime_label']}", html)
     return a, pf
+
+
+def cmd_intraday(cfg, paths, args):
+    """During market hours: add today's live prices as a provisional bar and
+    refresh the fast dashboard files (prices, scores, calls, market, sectors).
+    Nothing is written to the stored price history or the track record."""
+    from screener import engine, screens
+    from screener.adjust import append_day
+    from screener.export import export_all
+    from screener.pipeline import NEPAL_TZ_OFFSET, Pipeline
+
+    t0 = time.time()
+    now = datetime.now(timezone.utc).replace(tzinfo=None) + NEPAL_TZ_OFFSET
+    today = pd.Timestamp(now.date())
+    pl = Pipeline(cfg, paths)
+    if not (paths.data / "calibration.json").exists():
+        pl.repair_dates()
+    if pl.nepse is None:
+        log.warning("NEPSE live feed unavailable — skipping intraday update")
+        return
+    is_open = pl.nepse.market_open()
+    meta = read_json(paths.out / "meta.json", {}) or {}
+    last_live = meta.get("live") or {}
+    if is_open is False and not args.force and last_live.get("date") == today.strftime("%Y-%m-%d") and last_live.get("final"):
+        log.info("Market closed and today's final intraday snapshot already published")
+        return
+    live = pl.nepse.live()
+    if live.empty:
+        log.info("No live prices (market closed or holiday)")
+        return
+    live = live.drop_duplicates("symbol").set_index("symbol")
+    prices = store.load_all_prices(paths)
+    n = 0
+    for sym, hist in list(prices.items()):
+        if sym not in live.index or len(hist) == 0 or hist["date"].max() > today:
+            continue
+        r = live.loc[sym].to_dict()
+        bar = {"date": today, "close": r["close"], "volume": r.get("volume"), "turnover": r.get("turnover"),
+               "prev_close": r.get("prev_close")}
+        for k in ("open", "high", "low"):
+            v = r.get(k)
+            bar[k] = v if v == v and v else r["close"]
+        prices[sym], _ = append_day(hist, bar, sym)
+        n += 1
+    idx = None
+    try:
+        il = pl.nepse.index_live()
+        if il and il.get("close"):
+            idx = pd.DataFrame([{"date": today, "open": il.get("prev_close") or il["close"], "high": il.get("high") or il["close"],
+                                 "low": il.get("low") or il["close"], "close": il["close"]}])
+    except Exception as e:  # noqa: BLE001
+        log.warning("Live index unavailable: %r", e)
+    log.info("Live prices for %d stocks (market %s)", n, "open" if is_open else "closed")
+    a = engine.build(cfg, paths, prices=prices, index_extra=idx)
+    presets = screens.all_presets()
+    hits = screens.run_presets(a.w, presets)
+    live_meta = {"date": today.strftime("%Y-%m-%d"), "as_of": now.strftime("%H:%M"), "market_open": bool(is_open),
+                 "final": is_open is False, "stocks": n}
+    export_all(a, paths, cfg, presets, hits, None, None, light=True, live=live_meta)
+    pl.save_status()
+    log.info("Intraday snapshot %s NPT written (%.0fs)", live_meta["as_of"], time.time() - t0)
 
 
 def cmd_optimize(cfg, paths, args):
@@ -141,7 +214,7 @@ def fundamentals_stale(paths, days: int) -> bool:
 def main(argv=None):
     p = argparse.ArgumentParser(description="NEPSE technical + fundamental screener")
     p.add_argument("command", choices=["diagnose", "universe", "backfill", "update", "fundamentals", "analyze",
-                                       "daily", "optimize", "portfolio", "demo"])
+                                       "daily", "intraday", "optimize", "portfolio", "demo"])
     p.add_argument("--limit", type=int, help="only process the first N symbols (testing)")
     p.add_argument("--symbols", help="comma-separated symbols")
     p.add_argument("--force", action="store_true")
@@ -202,6 +275,8 @@ def main(argv=None):
         if fundamentals_stale(paths, 7):
             pl.update_fundamentals(syms, limit=args.limit)
         cmd_analyze(cfg, paths, args)
+    elif args.command == "intraday":
+        cmd_intraday(cfg, paths, args)
     elif args.command == "optimize":
         cmd_optimize(cfg, paths, args)
     elif args.command == "portfolio":

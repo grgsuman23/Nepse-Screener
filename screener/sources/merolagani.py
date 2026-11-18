@@ -24,8 +24,12 @@ CHART = (
 class Merolagani:
     name = "merolagani"
 
-    def __init__(self, http: Http):
+    def __init__(self, http: Http, day_offset: int = 0):
         self.http = http
+        # Merolagani's chart feed has been seen labelling bars one day late.
+        # The pipeline measures the offset against NEPSE's own dates (see
+        # Pipeline.merolagani_offset) and passes the correction in here.
+        self.day_offset = int(day_offset or 0)
 
     def history(self, symbol: str, start: date, end: date | None = None, adjusted: bool = True) -> pd.DataFrame:
         end = end or date.today()
@@ -51,6 +55,8 @@ class Merolagani:
         )
         for c in ("open", "high", "low", "close", "volume"):
             df[c] = pd.to_numeric(df[c], errors="coerce")
+        if self.day_offset:
+            df["date"] = df["date"] + pd.Timedelta(days=self.day_offset)
         df["turnover"] = df["close"] * df["volume"]  # approximation (feed has no turnover)
         df = df.dropna(subset=["close"])
         df = df[df["close"] > 0]

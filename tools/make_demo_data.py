@@ -100,6 +100,7 @@ def build_demo(root: Path, cfg: dict) -> None:
                          "bonus_pct": round(rng.uniform(0, 10), 2) if rng.random() < 0.4 else 0,
                          "shares_outstanding": int(rng.uniform(5e6, 3e8)), "source": "demo", "as_of": "2026-11-12"})
     pd.DataFrame(uni).to_csv(root / "data" / "universe.csv", index=False)
+    (root / "data" / "calibration.json").write_text('{"merolagani_day_offset": 0, "stored_offset": 0}')
     fd = pd.DataFrame(fund)
     fd.to_csv(root / "data" / "fundamentals" / "latest.csv", index=False)
     fd.to_csv(root / "data" / "fundamentals" / "snapshots" / "2026-11-12.csv", index=False)

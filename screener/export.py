@@ -15,7 +15,7 @@ from .scoring import CALLS, STANCES, call_label, explain
 from .utils import safe, write_json
 
 SCREENER_FIELDS = [
-    "close", "chg_pct", "volume", "turnover", "turnover_sma_20", "vol_ratio", "rsi_14", "rsi_2", "macd",
+    "open", "high", "low", "close", "chg_pct", "volume", "turnover", "turnover_sma_20", "vol_ratio", "rsi_14", "rsi_2", "macd",
     "macd_signal", "macd_hist", "adx_14", "plus_di", "minus_di", "st_dir", "st_line", "atr_14", "atr_pct",
     "dist_sma200", "dist_ema50", "sma200_slope", "ret_1w", "ret_1m", "ret_3m", "ret_6m", "ret_12m", "rs_rating",
     "pct_from_52w_high", "pct_from_52w_low", "high_52w_t", "low_52w_t", "sma_20", "sma_50", "sma_200", "ema_20",
@@ -36,8 +36,10 @@ def _round_list(s: pd.Series, nd=2):
     return [None if (v != v or v is None) else round(float(v), nd) for v in s.to_numpy(dtype=float)]
 
 
-def export_all(a: Analysis, paths: Paths, cfg: dict, presets: list[dict], hits: dict, strategies: list[dict],
-               tracking: dict, demo: bool = False) -> None:
+def export_all(a: Analysis, paths: Paths, cfg: dict, presets: list[dict], hits: dict, strategies: list[dict] | None,
+               tracking: dict | None, demo: bool = False, light: bool = False, live: dict | None = None) -> None:
+    """light=True (intraday): skip per-stock history files, strategies and tracking —
+    only the fast-moving files are rewritten."""
     out = paths.out
     snap = a.latest()
     last = a.dates[-1]
@@ -74,12 +76,12 @@ def export_all(a: Analysis, paths: Paths, cfg: dict, presets: list[dict], hits: 
     write_json(out / "presets.json", [{**p, "hits": hits.get(p["id"], [])} for p in presets])
 
     # ---------------- per-stock history
-    n = int(cfg.get("export", {}).get("history_bars", 500))
+    n = 0 if light else int(cfg.get("export", {}).get("history_bars", 500))
     dates = a.dates[-n:]
     hist_dir = out / "history"
     hist_dir.mkdir(parents=True, exist_ok=True)
     keep = set()
-    for sym in a.symbols:
+    for sym in (a.symbols if n else []):
         traded = a.w["traded"][sym].loc[dates] > 0
         d = dates[traded.to_numpy()]
         if len(d) < 5:
@@ -90,7 +92,7 @@ def export_all(a: Analysis, paths: Paths, cfg: dict, presets: list[dict], hits: 
                 obj[k] = _round_list(a.w[f][sym].loc[d], 0 if k == "v" else 2)
         write_json(hist_dir / f"{sym}.json", obj)
         keep.add(f"{sym}.json")
-    for f in hist_dir.glob("*.json"):
+    for f in (hist_dir.glob("*.json") if n else []):
         if f.name not in keep:
             f.unlink()
 
@@ -153,8 +155,10 @@ def export_all(a: Analysis, paths: Paths, cfg: dict, presets: list[dict], hits: 
     write_json(out / "sectors.json", secs)
 
     # ---------------- strategies, tracking, fields, meta
-    write_json(out / "strategies.json", strategies)
-    write_json(out / "tracking.json", tracking)
+    if strategies is not None:
+        write_json(out / "strategies.json", strategies)
+    if tracking is not None:
+        write_json(out / "tracking.json", tracking)
     write_json(out / "fields.json", INDICATOR_HELP)
     status = {}
     try:
@@ -167,7 +171,7 @@ def export_all(a: Analysis, paths: Paths, cfg: dict, presets: list[dict], hits: 
         "stocks": len(a.symbols), "scored": int(snap["score"].notna().sum()),
         "liquid": int(snap["liquid"].sum()) if "liquid" in snap else None,
         "fundamentals_mode": a.fundamentals_mode, "fundamentals_count": int(len(fund)),
-        "index_source": a.index_source, "warnings": a.warnings, "sources": status, "demo": demo,
+        "index_source": a.index_source, "warnings": a.warnings, "sources": status, "demo": demo, "live": live,
         "settings": {"costs": cfg.get("costs"), "portfolio": cfg.get("portfolio"),
                      "scoring": cfg.get("scoring"), "tracking": cfg.get("tracking")},
     })

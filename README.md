@@ -33,6 +33,8 @@ Everything runs on **GitHub Actions** (free). The dashboard is a web page on **G
 
 **Use it like an app.** Open the dashboard link in Chrome or Edge and click **Install** in the sidebar (or the install icon in the address bar). On a phone, use *Add to Home screen*. It then opens in its own window, works offline with the last downloaded data, and has a light and dark theme. Press **Ctrl K** (or **/**) to search any stock, screen or page. Use keys **1–8** to switch pages, and the ★ to build a watchlist.
 
+**During market hours** the **Intraday update** job adds live prices every ~15 minutes (11:00–15:00 Nepal time). Scores and calls are recalculated on the provisional bar, and an open app refreshes by itself. Intraday calls are marked *Live* and are provisional. The track record and e-mail use closing prices only. GitHub can start scheduled jobs a few minutes late, so treat it as "near real-time", not tick-by-tick.
+
 From then on, **Daily update** runs automatically at 3:50 PM Nepal time, Sunday–Thursday. **Weekly optimisation** runs every Friday.
 
 ### Optional: daily e-mail and portfolio in the e-mail

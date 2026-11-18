@@ -12,20 +12,30 @@ BLUE, RED, GREEN = "#0C4DA1", "#ED1B24", "#1E8E3E"
 ACTION_COLOR = {"EXIT": RED, "REDUCE": "#E37400", "HOLD": "#5F6368", "ADD": GREEN}
 
 
+def _esc(s):
+    import html
+    return html.escape(str(s))
+
+
 def _pct(v):
     return "–" if v is None else f"{v * 100:+.1f}%"
 
 
-def build_html(market: dict, pf: dict | None, strategies: list[dict], top_buys: list[dict], tracking: dict,
+def build_html(market: dict, portfolios, strategies: list[dict], top_buys: list[dict], tracking: dict,
                dashboard_url: str | None) -> str:
+    """portfolios: list of (name, analysis) tuples, a single analysis dict, or None."""
+    if isinstance(portfolios, dict):
+        portfolios = [("Your portfolio", portfolios)]
     h = [f"<div style='font-family:Segoe UI,Arial,sans-serif;max-width:720px;color:#202124'>",
          f"<h2 style='color:{BLUE};margin:0 0 4px'>NEPSE Screener — {market['date']}</h2>",
          f"<p style='margin:0 0 14px'>NEPSE <b>{market['index']:,.1f}</b> ({_pct(market['index_chg'])}) · "
          f"Regime: <b style='color:{GREEN if market['regime'] > 0 else RED if market['regime'] < 0 else '#E37400'}'>{market['regime_label']}</b> · "
          f"Breadth: {market['breadth_50'] * 100:.0f}% above 50-DMA</p>"]
-    if pf and pf.get("positions"):
+    for name, pf in (portfolios or []):
+        if not pf or not pf.get("positions"):
+            continue
         s = pf["summary"]
-        h.append(f"<h3 style='color:{BLUE}'>Your portfolio</h3><p>Value Rs {s['value']:,.0f} · P&L Rs {s['pnl']:,.0f} ({_pct(s['pnl_pct'])})<br><i>{s['regime_advice']}</i></p>")
+        h.append(f"<h3 style='color:{BLUE}'>{_esc(name)}</h3><p>Value Rs {s['value']:,.0f} · P&L Rs {s['pnl']:,.0f} ({_pct(s['pnl_pct'])})<br><i>{s['regime_advice']}</i></p>")
         h.append("<table style='border-collapse:collapse;width:100%;font-size:13px'><tr style='background:#F1F3F4'>"
                  "<th align=left>Stock</th><th>Action</th><th align=right>LTP</th><th align=right>P&L</th><th align=right>Stop</th><th align=left>Why</th></tr>")
         for p in pf["positions"]:

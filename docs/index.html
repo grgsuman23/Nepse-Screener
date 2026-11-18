@@ -77,6 +77,10 @@ main{padding:22px 26px 60px;max-width:1560px;width:100%}
 .pagehead p{margin:0;color:var(--mut);max-width:70ch}
 .notice{border:1px solid var(--line);border-left:3px solid var(--amber);background:var(--amber-soft);padding:9px 14px;border-radius:var(--r-sm);margin-bottom:12px;font-size:14px}
 .notice.demo{border-left-color:var(--brandred);background:var(--down-soft)}
+.notice.live{border-left-color:var(--up);background:var(--up-soft)}
+.livepill{display:inline-flex;align-items:center;gap:6px;font-weight:700;font-size:13px;color:var(--up);background:var(--up-soft);border-radius:999px;padding:3px 10px}
+.livepill i{width:8px;height:8px;border-radius:50%;background:var(--up);animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
 
 /* ---------------------------------------------------------------- surfaces */
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-lg);padding:16px 18px;min-width:0}
@@ -491,17 +495,51 @@ const PAL = ['#4A88E8','#ED1B24','#34C77B','#F2A93B','#9B7BEA','#2BB3A8','#E4609
 /* ======================================================================
    Boot
    ====================================================================== */
-async function boot(){
+async function loadAll(){
   const names=['meta','market','screener','sectors','presets','strategies','tracking','fields'];
   const vals = await Promise.all(names.map(n => getJSON(n).catch(()=>null)));
-  names.forEach((n,i)=>D[n]=vals[i]);
-  if(!D.meta || !D.screener){ $('#pg-market').innerHTML = `<div class="panel empty"><b>No market data yet</b>Open your GitHub repository, go to Actions, run “Manual run” with the command <code>setup</code>, then reload this page.</div>`; go('market'); return; }
+  const prevDate = D.meta && D.meta.last_trade_date;
+  names.forEach((n,i)=>{ if(vals[i]!==null || !D[n]) D[n]=vals[i]; });
+  if(!D.meta || !D.screener) return false;
   D.rows=D.screener.rows; D.by=Object.fromEntries(D.rows.map(r=>[r.symbol,r])); D.preset=Object.fromEntries((D.presets||[]).map(p=>[p.id,p]));
-  const m=D.market;
-  $('#mktPill').innerHTML = `<span class="mut lbl-date" title="Last trading session">${esc(D.meta.last_trade_date)}</span><span class="idx">${fmt.n(m.index)}</span><span class="num ${tone(m.index_chg)}" style="font-size:16px;font-weight:600">${fmt.sp(m.index_chg,2)}</span>${regime(m.regime)}`;
-  if (D.meta.demo) $('#notices').innerHTML += `<div class="notice demo"><b>Demo data.</b> Prices and tickers are synthetic so you can explore the app. Real NEPSE data appears after the first GitHub Action run.</div>`;
-  (D.meta.warnings||[]).forEach(w=>$('#notices').innerHTML += `<div class="notice">${esc(w)}</div>`);
+  Object.keys(HIST).forEach(k=>{ if((prevDate && prevDate!==D.meta.last_trade_date) || (HIST[k]&&HIST[k]._prov)) delete HIST[k]; });
+  return true;
+}
+function isLive(){ const L=D.meta&&D.meta.live; return !!(L && L.date===D.meta.last_trade_date); }
+function drawHeader(){
+  const m=D.market, L=D.meta.live;
+  const tag = isLive() ? (L.market_open ? `<span class="livepill" title="Provisional: updates about every 15 minutes while NEPSE is open"><i></i>Live ${esc(L.as_of)}</span>` : `<span class="mut lbl-date" title="Final intraday snapshot; official close arrives with the daily update">Closing ${esc(L.as_of)}</span>`)
+                       : `<span class="mut lbl-date" title="Last trading session">${esc(D.meta.last_trade_date)}</span>`;
+  $('#mktPill').innerHTML = `${tag}<span class="idx">${fmt.n(m.index)}</span><span class="num ${tone(m.index_chg)}" style="font-size:16px;font-weight:600">${fmt.sp(m.index_chg,2)}</span>${regime(m.regime)}`;
+  let n='';
+  if (D.meta.demo) n += `<div class="notice demo"><b>Demo data.</b> Prices and tickers are synthetic so you can explore the app. Real NEPSE data appears after the first GitHub Action run.</div>`;
+  if (isLive() && L.market_open) n += `<div class="notice live"><b>Market open.</b> Prices, scores and calls are provisional and refresh about every 15 minutes (last ${esc(L.as_of)} NPT). Final calls and the track record use the closing prices.</div>`;
+  (D.meta.warnings||[]).forEach(w=> n += `<div class="notice">${esc(w)}</div>`);
+  $('#notices').innerHTML = n;
+}
+async function boot(){
+  const ok = await loadAll();
+  if(!ok){ $('#pg-market').innerHTML = `<div class="panel empty"><b>No market data yet</b>Open your GitHub repository, go to Actions, run “Manual run” with the command <code>setup</code>, then reload this page.</div>`; go('market'); return; }
+  drawHeader();
   const h=location.hash.slice(1); go(PAGES.some(p=>p[0]===h)?h:'market');
+  setInterval(autoRefresh, 120000);
+  document.addEventListener('visibilitychange', () => { if(!document.hidden) autoRefresh(); });
+}
+/* during market hours, pick up each new intraday snapshot without a page reload */
+function marketHours(){ const now=new Date(), npt=new Date(now.getTime()+(now.getTimezoneOffset()+345)*60000); const m=npt.getHours()*60+npt.getMinutes();
+  return npt.getDay()!==6 && m>=10*60+45 && m<=16*60+30; }
+let refreshing=false;
+async function autoRefresh(){
+  if(refreshing || document.hidden || window.EMBED) return;
+  if(!marketHours() && !(D.meta&&D.meta.live&&D.meta.live.market_open)) return;
+  refreshing=true;
+  try{
+    const r=await fetch('data/meta.json',{cache:'no-store'}); if(!r.ok) return; const meta=await r.json();
+    if(meta.generated===D.meta.generated) return;
+    await loadAll(); drawHeader();
+    R[S.page] && R[S.page](); if(document.body.classList.contains('drawer-open')) drawDrawer();
+    toast(isLive()?`Prices updated ${D.meta.live.as_of} NPT`:'Closing prices updated');
+  } catch(e){} finally { refreshing=false; }
 }
 
 /* ======================================================================
@@ -700,6 +738,11 @@ async function drawDrawer(){
     $$('[data-p]',b).forEach(c=>c.onclick=()=>{ S.panes[c.dataset.p]=!S.panes[c.dataset.p]; drawDrawer(); });
     const h=await getHistory(r.symbol); if(CUR!==r.symbol || S.dtab!=='chart') return;
     if(!h){ $('#sc').innerHTML='<div class="empty">No price history for this stock.</div>'; return; }
+    if(isLive() && h.d[h.d.length-1] < D.meta.last_trade_date && isNum(r.close)){  // today's provisional candle
+      const add=(k,v)=>{ if(h[k]) h[k]=h[k].concat([v]); }; h._prov=true;
+      h.d=h.d.concat([D.meta.last_trade_date]); add('o',isNum(r.open)?r.open:r.close); add('h',isNum(r.high)?r.high:r.close); add('l',isNum(r.low)?r.low:r.close); add('c',r.close); add('v',r.volume);
+      ['e20','e50','s200','rsi','macd','sig','hist','st','std','bbu','bbl','score','stance'].forEach(k=>add(k, ({e20:r.ema_20,e50:r.ema_50,s200:r.sma_200,rsi:r.rsi_14,macd:r.macd,sig:r.macd_signal,hist:r.macd_hist,st:r.st_line,std:r.st_dir,score:r.score,stance:r.stance_code})[k] ?? null));
+    }
     const s0=Math.max(0,h.d.length-S.dtf), sl=a=>(a||[]).slice(s0);
     const main=[{type:'candle',o:sl(h.o),h:sl(h.h),l:sl(h.l),c:sl(h.c)}];
     if(S.ind.bb) main.unshift({type:'band',hi:sl(h.bbu),lo:sl(h.bbl),c:'--blue-soft',noTip:true});

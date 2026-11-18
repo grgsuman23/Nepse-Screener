@@ -41,6 +41,7 @@ jobs:
       - name: Run
         env:
           PORTFOLIO_CSV: ${{ secrets.PORTFOLIO_CSV }}
+          SHEET_PORTFOLIOS: ${{ secrets.SHEET_PORTFOLIOS }}
         run: |
           case "${{ inputs.command }}" in
             setup)        python run.py diagnose
