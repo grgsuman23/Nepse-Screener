@@ -10,12 +10,16 @@
  * API_KEY in NepseScreenerBridge.gs) and keeps it in this browser only, so the
  * key is never written into the public page.
  *
+ * To skip the key prompt on every device, set VIEW_KEY in the bridge and add it
+ * to the tag: data-key="your-view-key". That key can only read the advice.
+ *
  * It reads ?action=advice from the bridge: the advice the daily screener run
  * last wrote for this portfolio (action, sell quantity, trailing stop, reasons).
  */
 (function () {
   const me = document.currentScript;
   const BRIDGE = (me && me.dataset.bridge) || '';
+  const PAGE_KEY = (me && me.dataset.key) || '';
   const KEY_NAME = 'smv_screener_key';
   const RED = '#ED1B24', BLUE = '#0C4DA1';
   const ACTION = {
@@ -94,13 +98,14 @@
 
   async function load(body) {
     if (!BRIDGE) { body.innerHTML = '<p class="sca-msg">Add data-bridge="…/exec" to the script tag.</p>'; return; }
-    let key = ''; try { key = localStorage.getItem(KEY_NAME) || ''; } catch (e) {}
+    let key = PAGE_KEY; if (!key) try { key = localStorage.getItem(KEY_NAME) || ''; } catch (e) {}
     if (!key) return askKey(body);
     body.innerHTML = '<p class="sca-meta">Loading…</p>';
     try {
       const r = await fetch(BRIDGE + '?action=advice&key=' + encodeURIComponent(key));
       const js = await r.json();
       if (!js.ok) {
+        if (/key/i.test(js.error || '') && PAGE_KEY) { body.innerHTML = '<p class="sca-msg">The key in the page was not accepted. Check VIEW_KEY in the bridge script.</p>'; return; }
         if (/key/i.test(js.error || '')) { try { localStorage.removeItem(KEY_NAME); } catch (e) {} return askKey(body, 'That key was not accepted. Enter it again.'); }
         body.innerHTML = `<p class="sca-msg">${esc(js.error || 'No advice yet.')} The screener sends it after its evening run.</p>`;
         return;
@@ -152,9 +157,9 @@
         c.map(x => `<tr><td><b>${esc(x.symbol)}</b></td><td>${esc(x.sector)}</td><td>${esc(x.stance)}</td><td>${Math.round(x.score)}</td><td>${n2(x.close)}</td></tr>`).join('') +
         '</tbody></table>';
     }
-    h += '<p class="sca-meta" style="margin-top:18px"><button class="sca-link" type="button">Change bridge key</button></p>';
+    if (!PAGE_KEY) h += '<p class="sca-meta" style="margin-top:18px"><button class="sca-link" type="button">Change bridge key</button></p>';
     body.innerHTML = h;
-    body.querySelector('.sca-link').onclick = () => { try { localStorage.removeItem(KEY_NAME); } catch (e) {} askKey(body); };
+    if (!PAGE_KEY) body.querySelector('.sca-link').onclick = () => { try { localStorage.removeItem(KEY_NAME); } catch (e) {} askKey(body); };
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();

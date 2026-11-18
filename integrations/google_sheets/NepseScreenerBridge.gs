@@ -51,6 +51,11 @@ const CONFIG = {
   // Long random secret. The screener must send the same key. Change it!
   API_KEY: 'CHANGE-ME-to-a-long-random-key',
 
+  // Optional second key that can ONLY read the advice (?action=advice), never
+  // the holdings endpoint. Put this one in your web app's page so nobody has to
+  // type a key. Anyone who can open that page can then see the advice.
+  VIEW_KEY: '',
+
   PORTFOLIO_NAME: 'Samvardhan Capital Management',
 
   // Where the screener publishes its data (your GitHub Pages address + /data/)
@@ -82,8 +87,9 @@ const CONFIG = {
 function doGet(e) {
   const p = (e && e.parameter) || {};
   try {
-    if (p.key !== CONFIG.API_KEY) return json_({ ok: false, error: 'Invalid or missing key' });
     const action = p.action || 'holdings';
+    const viewOk = CONFIG.VIEW_KEY && p.key === CONFIG.VIEW_KEY && action === 'advice';
+    if (p.key !== CONFIG.API_KEY && !viewOk) return json_({ ok: false, error: 'Invalid or missing key' });
     if (action === 'ping') return json_({ ok: true, portfolio: CONFIG.PORTFOLIO_NAME });
     if (action === 'holdings') return json_(holdingsPayload_());
     if (action === 'advice') return json_(getAdvice_());
