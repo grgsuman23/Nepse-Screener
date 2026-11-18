@@ -61,6 +61,18 @@
   .sca-panel input{width:100%;padding:9px;border:1px solid #B9C4D6;border-radius:6px;font:inherit;margin:8px 0}
   .sca-panel .sca-go{background:${BLUE};color:#fff;border:0;border-radius:6px;padding:9px 14px;font-weight:600;cursor:pointer}
   .sca-link{background:none;border:0;color:${BLUE};text-decoration:underline;cursor:pointer;padding:0;font:inherit;font-size:12.5px}
+  /* the host app may style tables, paragraphs and headings (e.g. a dark theme): set everything explicitly */
+  .sca-panel,.sca-panel p,.sca-panel span,.sca-panel div,.sca-panel table,.sca-panel tr,.sca-panel label{color:#1A2333!important;text-align:left}
+  .sca-panel td{color:#1A2333!important;background:#fff!important;font-size:13.5px!important;border-top:0!important;border-left:0!important;border-right:0!important}
+  .sca-panel th{color:#5B6B85!important;background:#fff!important;font-size:12.5px!important;text-transform:none!important;letter-spacing:0!important}
+  .sca-panel tr{background:#fff!important}
+  .sca-panel .sca-meta,.sca-panel .sca-why{color:#5B6B85!important}
+  .sca-panel .sca-detail{color:#33415C!important}
+  .sca-panel .sca-h3{color:${BLUE}!important;background:none!important}
+  .sca-panel .sca-head,.sca-panel .sca-head h2,.sca-panel .sca-x{color:#fff!important;background:${BLUE}!important}
+  .sca-panel .sca-act,.sca-panel .sca-counts span{color:inherit}
+  .sca-panel .sca-over{color:${RED}!important;font-weight:700!important}
+  .sca-panel b{color:inherit!important}
   @media (prefers-reduced-motion:no-preference){.sca-panel{animation:sca-in .18s ease-out}@keyframes sca-in{from{transform:translateX(24px);opacity:.6}}}`;
 
   const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -125,13 +137,13 @@
     let h = `<p class="sca-meta">Screener close of ${esc(s.date)} · received ${esc(new Date(js.received).toLocaleString())}</p>`;
     if (s.regime_advice) h += `<p class="sca-regime">${esc(s.regime_advice)}</p>`;
     h += '<div class="sca-counts">' + order.filter(a => counts[a]).map(a =>
-      `<span style="background:${ACTION[a].bg};color:${ACTION[a].fg}">${counts[a]} ${ACTION[a].label}</span>`).join('') + '</div>';
+      `<span style="background:${ACTION[a].bg};color:${ACTION[a].fg}!important">${counts[a]} ${ACTION[a].label}</span>`).join('') + '</div>';
     pos.forEach(p => {
       const a = ACTION[p.action] || ACTION.HOLD;
       const vs = p.stop && p.ltp ? ((p.ltp / p.stop - 1) * 100).toFixed(1) + '% vs stop' : '';
       h += `<div class="sca-card"><div class="sca-row">
         <span class="sca-sym">${esc(p.symbol)}</span>
-        <span class="sca-act" style="background:${a.bg};color:${a.fg}">${a.label}${p.sell_qty && (p.action === 'EXIT' || p.action === 'REDUCE') ? ' ' + n0(p.sell_qty) : ''}</span>
+        <span class="sca-act" style="background:${a.bg};color:${a.fg}!important">${a.label}${p.sell_qty && (p.action === 'EXIT' || p.action === 'REDUCE') ? ' ' + n0(p.sell_qty) : ''}</span>
         <span class="sca-num">LTP ${n2(p.ltp)}</span>
         ${p.stop ? `<span class="sca-num">Stop ${n2(p.stop)} (${vs})</span>` : ''}
         <span class="sca-num">Score ${p.score == null ? '' : Math.round(p.score)}</span></div>
@@ -141,14 +153,14 @@
     });
     (s.not_covered || []).forEach(n => {
       h += `<div class="sca-card"><div class="sca-row"><span class="sca-sym">${esc(n.symbol)}</span>
-        <span class="sca-act" style="background:${ACTION.REVIEW.bg};color:${ACTION.REVIEW.fg}">Review</span></div>
+        <span class="sca-act" style="background:${ACTION.REVIEW.bg};color:${ACTION.REVIEW.fg}!important">Review</span></div>
         <p class="sca-detail">${esc(n.note)}</p></div>`;
     });
     const sw = s.sector_weights || {}, lim = s.sector_limit || 0.4;
     const secs = Object.keys(sw);
     if (secs.length) {
       h += `<h3 class="sca-h3">Sector weights (limit ${Math.round(lim * 100)}%)</h3><table class="sca-ideas"><tbody>` +
-        secs.map(k => `<tr><td>${esc(k)}</td><td style="color:${sw[k] > lim ? RED : 'inherit'};font-weight:${sw[k] > lim ? 700 : 400}">${(sw[k] * 100).toFixed(1)}%</td></tr>`).join('') +
+        secs.map(k => `<tr><td>${esc(k)}</td><td class="${sw[k] > lim ? 'sca-over' : ''}">${(sw[k] * 100).toFixed(1)}%</td></tr>`).join('') +
         '</tbody></table>';
     }
     const c = js.candidates || [];
