@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
 import time
@@ -71,15 +72,17 @@ def cmd_analyze(cfg, paths, args, demo: bool = False):
     pf_src = getattr(args, "portfolio", None) or os.environ.get("PORTFOLIO_CSV")
     if pf_src:
         try:
-            holdings_sets.append(("My portfolio", load_portfolio(pf_src)))
+            holdings_sets.append(("My portfolio", load_portfolio(pf_src), None, None))
         except Exception as e:  # noqa: BLE001
             log.warning("Portfolio CSV could not be read: %s", e)
-    holdings_sets += sheets.fetch_all(os.environ.get("SHEET_PORTFOLIOS"))
+    holdings_sets += sheets.fetch_all(os.environ.get("SHEET_PORTFOLIOS"), with_source=True)
     portfolios = []
-    for name, holdings in holdings_sets:
+    for name, holdings, cgt_flat, src in holdings_sets:
         try:
-            res = pf_analyze(a, holdings, cfg)
+            res = pf_analyze(a, holdings, cfg, cgt_flat)
             portfolios.append((name, res))
+            if src and src.get("accepts_advice") and not demo:
+                sheets.push_advice(src, res)
             if cfg.get("tracking", {}).get("log_portfolio_actions"):
                 tracker.log_portfolio_actions(a, paths, res)
         except Exception as e:  # noqa: BLE001
@@ -190,8 +193,10 @@ def cmd_portfolio(cfg, paths, args):
     from screener.portfolio import analyze, load_portfolio
 
     a = engine.build(cfg, paths)
-    pf = analyze(a, load_portfolio(args.file), cfg)
+    pf = analyze(a, load_portfolio(args.file), cfg, getattr(args, "cgt", None))
     s = pf["summary"]
+    if getattr(args, "json", None):
+        Path(args.json).write_text(json.dumps(pf, indent=1, default=str))
     print(f"\nPortfolio {s['date']}: value Rs {s['value']:,.0f}  P&L Rs {s['pnl']:,.0f}  ({(s['pnl_pct'] or 0) * 100:+.1f}%)")
     print(s["regime_advice"], "\n")
     for p in pf["positions"]:
@@ -223,6 +228,8 @@ def main(argv=None):
     p.add_argument("--portfolio", help="portfolio CSV used during analyze/daily (or env PORTFOLIO_CSV)")
     p.add_argument("--skip-backtest", action="store_true")
     p.add_argument("--no-email", action="store_true")
+    p.add_argument("--json", help="portfolio command: also write the full advice as JSON to this file")
+    p.add_argument("--cgt", type=float, help="flat capital-gains-tax rate for the portfolio command (company: 0.10)")
     p.add_argument("--root", help="project root (default: this folder)")
     p.add_argument("-v", "--verbose", action="store_true")
     args = p.parse_args(argv)

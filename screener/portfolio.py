@@ -47,9 +47,9 @@ def load_portfolio(source: str) -> pd.DataFrame:
     return agg
 
 
-def analyze(a: Analysis, holdings: pd.DataFrame, cfg: dict) -> dict:
+def analyze(a: Analysis, holdings: pd.DataFrame, cfg: dict, cgt_flat: float | None = None) -> dict:
     pc = cfg.get("portfolio", {})
-    costs = Costs(cfg)
+    costs = Costs(cfg, cgt_flat)
     k0 = pc.get("atr_stop_multiple", 3.0)
     hard = pc.get("hard_stop_pct", 0.15)
     max_w = pc.get("max_position_weight", 0.20)
@@ -61,12 +61,22 @@ def analyze(a: Analysis, holdings: pd.DataFrame, cfg: dict) -> dict:
     today = a.dates[-1]
     regime = float(a.market["regime"].iloc[-1])
     close_w = a.w["close"]
-    positions, unknown = [], []
+    positions, unknown, not_covered = [], [], []
     total_value = 0.0
     for h in holdings.to_dict("records"):
         sym = h["symbol"]
         if sym not in snap.index:
             unknown.append(sym)
+            base = sym[:-1] if sym.endswith("P") and sym[:-1] in snap.index else None
+            nc = {"symbol": sym, "qty": float(h["quantity"]), "wacc": h.get("wacc")}
+            if base:
+                rb = snap.loc[base]
+                nc.update(base=base, base_call=STANCES.get(int(rb["stance_code"]), ""), base_score=round(float(rb["score"]), 1),
+                          note=f"Promoter share: not traded often enough to screen. The ordinary share {base} is rated "
+                               f"{STANCES.get(int(rb['stance_code']), '')} (score {float(rb['score']):.0f}).")
+            else:
+                nc["note"] = "Not in the screener's universe (promoter, debenture, mutual fund or delisted)."
+            not_covered.append(nc)
             continue
         r = snap.loc[sym]
         ltp = float(r["close"])
@@ -141,10 +151,10 @@ def analyze(a: Analysis, holdings: pd.DataFrame, cfg: dict) -> dict:
             detail = (f"ACCUMULATE: cheap versus sector peers with solid ROE and the price stabilising. "
                       f"Build gradually in small lots (about {size:.0%} of a normal position at a time).")
         notes = []
-        if action != "EXIT" and br["gain_before_tax"] > 0 and 0 < days_to_lt <= tax_win:
+        if cgt_flat is None and action != "EXIT" and br["gain_before_tax"] > 0 and 0 < days_to_lt <= tax_win:
             saved = br["gain_before_tax"] * (costs.cgt_short - costs.cgt_long)
             notes.append(f"Hold {days_to_lt} more days for long-term CGT ({costs.cgt_long:.2%} vs {costs.cgt_short:.0%}) — saves ≈ Rs {saved:,.0f}.")
-        elif action == "EXIT" and br["gain_before_tax"] > 0 and 0 < days_to_lt <= 10 and "stop" not in detail:
+        elif cgt_flat is None and action == "EXIT" and br["gain_before_tax"] > 0 and 0 < days_to_lt <= 10 and "stop" not in detail:
             notes.append(f"Only {days_to_lt} days to long-term CGT; if the chart allows, waiting saves tax.")
         if sw > max_sw:
             notes.append(f"Sector {r['sector']} is {sw:.0%} of the portfolio (limit {max_sw:.0%}).")
@@ -177,7 +187,7 @@ def analyze(a: Analysis, holdings: pd.DataFrame, cfg: dict) -> dict:
     summary = {
         "date": today.strftime("%Y-%m-%d"), "value": total_value, "cost": total_cost,
         "pnl": total_value - total_cost, "pnl_pct": total_value / total_cost - 1 if total_cost else None,
-        "positions": len(out), "unknown_symbols": unknown, "regime": regime,
+        "positions": len(out), "unknown_symbols": unknown, "not_covered": not_covered, "sector_limit": max_sw, "regime": regime,
         "regime_advice": ("Bull market: stay invested, let winners run with trailing stops." if regime >= 1 else
                           "Recovery phase: early-bottom signals — add selectively with half-size positions and 2.5× ATR stops." if regime > 0 else
                           "Sideways market: be selective, book profits faster, keep some cash." if regime == 0 else

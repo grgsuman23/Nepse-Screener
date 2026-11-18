@@ -45,6 +45,21 @@ A tab with a header row that includes at least:
 | `PORTFOLIO_NAME` | `'Samvardhan Capital Management'` |
 | `SCREENER_DATA_URL` / `SCREENER_APP_URL` | Already set to `https://grgsuman23.github.io/Nepse-Screener/…`. Change only if your address differs. |
 | `OUTPUT_SPREADSHEET_ID` | Leave `''` to add the two screener tabs to the same sheet. Put another sheet's ID here if your Netlify app must not see extra tabs. |
+| `COLUMNS` | Exact header names, when auto-detection would pick the wrong column. |
+| `BUY_DATES_SHEET` | A transactions tab used to find when each holding was bought, if the holdings tab has no date. |
+| `CGT_FLAT` | `''` for an individual. A company or institution pays a flat rate: `0.10`. |
+| `FULL_ADVICE` | `true` (default): the daily screener run writes its full advice into the **Screener Advice** tab. |
+
+#### Settings for the Samvardhan "Investment Dashboard" sheet
+Its **Holdings** tab has *Buy qty*, *Sold qty* and *Held qty*, and auto-detection would read *Buy qty*. Use:
+```js
+HOLDINGS_SHEET: 'Holdings',
+COLUMNS: { symbol: 'Scrip', quantity: 'Held qty', wacc: 'WACC' },
+BUY_DATES_SHEET: 'Transactions',
+CGT_FLAT: 0.10,
+FULL_ADVICE: true,
+```
+`WACC` on that tab already includes broker commission, SEBON fee and DP charge, which is what the screener expects.
 
 Save with **Ctrl + S**.
 
@@ -78,13 +93,27 @@ The connection is saved in that browser only. Repeat this on each device: phone,
    ```
 3. Save. The next daily e-mail includes a section with advice for each holding.
 
-### 7. Write the screener's calls into the sheet (optional)
-1. In the script editor, choose **syncScreener** and click **Run**. Two tabs appear: **Screener Signals** (every stock) and **Screener Advice** (your holdings with call, score and suggested stop).
-2. Choose **installDailyTrigger** and click **Run**. The tabs then refresh every day at about 4:30 PM Nepal time, after the screener's daily update.
+### 7. Write the screener's advice into the sheet
+With `FULL_ADVICE: true` and the `SHEET_PORTFOLIOS` secret from step 6, nothing else is needed: after each daily run (about 3:50 PM Nepal time) the screener reads the holdings, works out the advice, and sends it back. The script writes it into a **Screener Advice** tab at the end of the workbook:
+
+* one row per holding: action (Exit, Reduce, Hold, Add), quantity to sell, trailing stop and how far the price is from it, score, RSI, the main reasons and the notes (tax, liquidity, sector limit);
+* promoter shares and anything else the screener does not cover, marked *Review* with the rating of the ordinary share;
+* sector weights against the 40% limit, and the screener's ideas for new money.
+
+The tab is rebuilt on every run, so don't type in it. For the market-wide **Screener Signals** tab, choose **syncScreener** and click **Run**, then run **installDailyTrigger** once to refresh it daily at about 4:30 PM.
 
 ---
 
 ## Using screener data in your Netlify app
+
+### Portfolio advice panel (one line)
+Upload [`integrations/netlify/screener-advice.js`](../netlify/screener-advice.js) next to the app's `index.html` and add before `</body>`:
+```html
+<script src="screener-advice.js" data-bridge="https://script.google.com/macros/s/XXXX/exec"></script>
+```
+A **Screener advice** button appears at the bottom right. It opens a panel with the latest advice for every holding, sector weights and ideas. The first time, it asks for the bridge key and keeps it in that browser only, so the key is never written into the public page.
+
+### Market data
 The screener publishes public market data (no portfolio data) that any web app can read directly:
 
 ```js
