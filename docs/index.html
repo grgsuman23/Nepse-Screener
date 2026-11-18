@@ -521,7 +521,8 @@ async function boot(){
   const ok = await loadAll();
   if(!ok){ $('#pg-market').innerHTML = `<div class="panel empty"><b>No market data yet</b>Open your GitHub repository, go to Actions, run “Manual run” with the command <code>setup</code>, then reload this page.</div>`; go('market'); return; }
   drawHeader();
-  const h=location.hash.slice(1); go(PAGES.some(p=>p[0]===h)?h:'market');
+  const linked=await importConnectLink();
+  const h=location.hash.slice(1); go(linked?'portfolio':PAGES.some(p=>p[0]===h)?h:'market');
   setInterval(autoRefresh, 120000);
   document.addEventListener('visibilitychange', () => { if(!document.hidden) autoRefresh(); });
 }
@@ -909,8 +910,8 @@ function parseCSV(text){
 }
 const COST=()=>(D.meta.settings||{}).costs||{}, PFC=()=>(D.meta.settings||{}).portfolio||{};
 function commission(v){ const c=COST(); for(const [lim,rate] of (c.broker_commission_tiers||[[null,.004]])) if(lim===null||v<=lim) return Math.max(c.min_commission||10,v*rate); return v*.0024; }
-function sellBreakdown(qty,px,basis,days){ const c=COST(), v=qty*px, fees=commission(v)+v*(c.sebon_fee||.00015)+(c.dp_charge||25), gain=v-fees-basis;
-  const rate=days>(c.long_term_days||365)?(c.cgt_long_term??.0375):(c.cgt_short_term??.05), tax=Math.max(0,gain)*rate; return {net:v-fees-tax,profit:gain-tax,gain,rate,tax}; }
+function sellBreakdown(qty,px,basis,days,flat){ const c=COST(), v=qty*px, fees=commission(v)+v*(c.sebon_fee||.00015)+(c.dp_charge||25), gain=v-fees-basis;
+  const rate=isNum(flat)?flat:days>(c.long_term_days||365)?(c.cgt_long_term??.0375):(c.cgt_short_term??.05), tax=Math.max(0,gain)*rate; return {net:v-fees-tax,profit:gain-tax,gain,rate,tax}; }
 /* portfolio sources: this browser, or Google Sheets through the Apps Script bridge */
 const SRC_KEY='nepse_pf_sources_v1', SHEETS={};
 const pfSources=()=>store(SRC_KEY)||[];
@@ -942,7 +943,7 @@ R.portfolio = function(){
       <p class="mut" style="font-size:13.5px;margin:10px 0 0">MeroShare’s My WACC export works directly. Add the buy date to get the exact capital gains tax rate and a precise trailing stop.</p></div>`
    :`<div class="panel"><div class="toolbar"><span id="sheetInfo" class="mut" style="font-size:14px">Connecting to ${esc(src.name)}</span>
       <select id="pfAcct" class="hide"></select><button class="btn" onclick="drawPF(true)"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/></svg>Refresh from sheet</button>
-      <button class="btn" onclick="showConnect(${S.pfSrc})">Edit connection</button><button class="btn danger" onclick="disconnect(${S.pfSrc})">Disconnect</button></div><div id="sheetWarn"></div></div>`}
+      <button class="btn" onclick="showConnect(${S.pfSrc})">Edit connection</button><button class="btn" onclick="copyConnectLink(${S.pfSrc})">Link for another device</button><button class="btn danger" onclick="disconnect(${S.pfSrc})">Disconnect</button></div><div id="sheetWarn"></div></div>`}
   <div id="pfOut" class="mt"></div>`;
   $('#pfSrc').onclick=e=>{ const v=e.target.dataset.v; if(v===undefined) return; S.pfSrc=v==='local'?'local':+v; S.pfAcct=''; store('nepse_pf_selected',S.pfSrc); R.portfolio(); };
   if(isLocal) $('#pFile').onchange=async e=>{ const f=e.target.files[0]; if(!f) return; try{ const rows=parseCSV(await f.text()); const cur=pfLoad(); rows.forEach(r=>{ const i=cur.findIndex(x=>x.symbol===r.symbol); i>=0?cur[i]=r:cur.push(r); }); pfSave(cur); toast(`Imported ${rows.length} holdings`); drawPF(); }catch(err){ toast(err.message); } e.target.value=''; };
@@ -963,9 +964,24 @@ function showConnect(i){
       store(SRC_KEY,all); store('nepse_pf_selected',S.pfSrc); toast(`Connected: ${js.holdings.length} positions from “${js.sheet}”`); R.portfolio(); }
     catch(err){ $('#cMsg').innerHTML=`<span class="down">Could not connect: ${esc(err.message)}.</span> Check the address, the key, and that the web app is deployed with access set to “Anyone”.`; } };
 }
+/* one-tap setup on another device: the connection travels in the part of the
+   link after #, which browsers never send to any server */
+function copyConnectLink(i){ const x=pfSources()[i]; const code=btoa(unescape(encodeURIComponent(JSON.stringify(x))));
+  const link=location.origin+location.pathname+'#connect='+code;
+  const done=()=>toast('Link copied. Open it once on your phone or other PC. Keep it private: it contains the key.');
+  (navigator.clipboard&&navigator.clipboard.writeText(link).then(done,()=>prompt('Copy this link',link)))||prompt('Copy this link',link); }
+async function importConnectLink(){
+  const m=location.hash.match(/^#connect=([A-Za-z0-9+/=_-]+)/); if(!m) return false;
+  history.replaceState(null,'','#portfolio');
+  try{ const x=JSON.parse(decodeURIComponent(escape(atob(m[1])))); if(!x.url||!x.key) throw new Error('incomplete link');
+    const all=pfSources(); let i=all.findIndex(s=>s.url===x.url); if(i>=0) all[i]=x; else { all.push(x); i=all.length-1; }
+    store(SRC_KEY,all); S.pfSrc=i; store('nepse_pf_selected',i); toast(`Connected: ${x.name}`); }
+  catch(e){ toast('That connect link is not valid: '+e.message); }
+  return true;
+}
 function disconnect(i){ if(!confirm('Remove this Google Sheet connection from this browser? The sheet itself is not changed.')) return; const all=pfSources(); const [x]=all.splice(i,1); delete SHEETS[x.url]; store(SRC_KEY,all); S.pfSrc='local'; store('nepse_pf_selected','local'); R.portfolio(); toast('Disconnected'); }
 async function currentHoldings(force){
-  if(S.pfSrc==='local' || S.pfSrc===undefined) return {rows:pfLoad(), local:true};
+  if(S.pfSrc==='local' || S.pfSrc===undefined) return {rows:pfLoad(), local:true, flat:null};
   const src=pfSources()[S.pfSrc]; const js=await loadSheet(src,force);
   const accts=js.accounts||[], sel=$('#pfAcct');
   if(sel){ sel.classList.toggle('hide',accts.length<2); sel.innerHTML=`<option value="">All accounts combined</option>${accts.map(a=>`<option ${a===S.pfAcct?'selected':''}>${esc(a)}</option>`).join('')}`; sel.onchange=e=>{ S.pfAcct=e.target.value; drawPF(); }; }
@@ -973,7 +989,7 @@ async function currentHoldings(force){
   $('#sheetInfo') && ($('#sheetInfo').innerHTML=`<b style="color:var(--text)">${esc(js.portfolio||src.name)}</b>, tab “${esc(js.sheet)}”, ${js.holdings.length} positions, read at ${t.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}`);
   $('#sheetWarn') && ($('#sheetWarn').innerHTML=(js.warnings||[]).map(w=>`<div class="notice" style="margin:10px 0 0">${esc(w)}</div>`).join(''));
   const rows=(js.holdings||[]).filter(h=>!S.pfAcct||h.account===S.pfAcct);
-  return {rows:combine(rows), local:false};
+  const f=js.tax&&js.tax.cgt_flat; return {rows:combine(rows), local:false, flat:isNum(+f)&&f!==null&&f!==''?+f:null};
 }
 function pfAdd(){ const s=$('#pSym').value.trim().toUpperCase(), q=parseFloat($('#pQty').value), w=parseFloat($('#pW').value), d=$('#pD').value;
   if(!s||!(q>0)) return toast('Enter a symbol and a quantity'); const cur=pfLoad(), i=cur.findIndex(x=>x.symbol===s), row={symbol:s,quantity:q,wacc:w,buy_date:d}; i>=0?cur[i]=row:cur.push(row); pfSave(cur);
@@ -982,11 +998,11 @@ function pfDel(s){ pfSave(pfLoad().filter(x=>x.symbol!==s)); toast(`Removed ${s}
 function dl(name, text){ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([text],{type:'text/csv'})); a.download=name; a.click(); }
 function pfTemplate(){ dl('portfolio_template.csv','symbol,quantity,wacc,buy_date\nNABIL,100,520.50,2025-06-15\n'); }
 function pfExport(){ dl('my_portfolio.csv','symbol,quantity,wacc,buy_date\n'+pfLoad().map(x=>[x.symbol,x.quantity,isNum(x.wacc)?x.wacc:'',x.buy_date||''].join(',')).join('\n')); }
-async function analyzePF(holdings){
+async function analyzePF(holdings, flat){
   const P=PFC(), k0=P.atr_stop_multiple??3, hard=P.hard_stop_pct??.15, maxW=P.max_position_weight??.2, maxSW=P.max_sector_weight??.4, redF=P.reduce_fraction??.5, taxWin=P.tax_wait_window_days??30;
   const c=COST(), lt=c.long_term_days||365, reg=D.market.regime, today=new Date(D.meta.last_trade_date);
   const pos=[], unknown=[]; let total=0;
-  for(const h of holdings){ const r=D.by[h.symbol]; if(!r){ unknown.push(h.symbol); continue; } const value=h.quantity*r.close; total+=value; pos.push({h,r,value}); }
+  for(const h of holdings){ const r=D.by[h.symbol]; if(!r){ unknown.push(h); continue; } const value=h.quantity*r.close; total+=value; pos.push({h,r,value}); }
   const secVal={}; pos.forEach(p=>secVal[p.r.sector]=(secVal[p.r.sector]||0)+p.value);
   const out=[];
   for(const {h,r,value} of pos){
@@ -998,7 +1014,7 @@ async function analyzePF(holdings){
     let stop=isNum(r.atr_14)?peak-k*r.atr_14:null, basis=`${k}× ATR below the high of ${fmt.n(peak,1)}`, reset=false;
     if(stop!==null&&r.close<stop&&code>=1){ stop=recent-k*r.atr_14; basis=`${k}× ATR below the 20-day high of ${fmt.n(recent,1)}`; reset=true; }
     if(r.st_dir>0&&isNum(r.st_line)&&(stop===null||r.st_line>stop)){ stop=r.st_line; basis='Supertrend support'; }
-    const days=h.buy_date?Math.round((today-new Date(h.buy_date))/864e5):null, br=sellBreakdown(h.quantity,r.close,cost,days??0), toLT=days!==null&&days<=lt?lt+1-days:0;
+    const days=h.buy_date?Math.round((today-new Date(h.buy_date))/864e5):null, br=sellBreakdown(h.quantity,r.close,cost,days??0,flat), toLT=days!==null&&days<=lt?lt+1-days:0;
     let action='HOLD', detail='The trend and score don’t call for a change.', sellQty=0;
     if(stop!==null&&r.close<stop){ action='EXIT'; detail=`Closed below the trailing stop of ${fmt.n(stop,1)} (${basis}).`; sellQty=h.quantity; }
     else if(code===-2){ action='EXIT'; detail='The model rates it Exit: broken trend and a weak score.'; sellQty=h.quantity; }
@@ -1008,12 +1024,12 @@ async function analyzePF(holdings){
     else if(code>=1&&weight<maxW*.8&&sw<maxSW){ action='ADD'; detail=`Rated ${code===2?'strong buy':'buy'} in an uptrend. Adding on dips is reasonable.`+(size<1?` Keep any addition to about ${fmt.p(size,0)} of a normal position for this market.`:''); }
     else if(r.accumulate&&weight<maxW*.8&&sw<maxSW){ action='ADD'; detail=`Accumulate: cheap against sector peers with solid ROE and the price stabilising. Build gradually in small lots, about ${fmt.p(size,0)} of a normal position at a time.`; }
     const notes=[];
-    if(action!=='EXIT'&&br.gain>0&&toLT>0&&toLT<=taxWin) notes.push(`Hold ${toLT} more days to pay ${fmt.p(c.cgt_long_term,2)} tax instead of ${fmt.p(c.cgt_short_term,0)}, saving about Rs ${fmt.i(br.gain*((c.cgt_short_term||.05)-(c.cgt_long_term||.0375)))}.`);
+    if(!isNum(flat)&&action!=='EXIT'&&br.gain>0&&toLT>0&&toLT<=taxWin) notes.push(`Hold ${toLT} more days to pay ${fmt.p(c.cgt_long_term,2)} tax instead of ${fmt.p(c.cgt_short_term,0)}, saving about Rs ${fmt.i(br.gain*((c.cgt_short_term||.05)-(c.cgt_long_term||.0375)))}.`);
     if(sw>maxSW) notes.push(`${r.sector} is ${fmt.p(sw,0)} of the portfolio (limit ${fmt.p(maxSW,0)}).`);
     if(!r.liquid) notes.push('Thinly traded, so selling may take several sessions.');
     if(reg<0&&action==='HOLD') notes.push('Bear market: tighten the stop and avoid averaging down.');
     if(reset) notes.push('An older stop was broken earlier but the trend has recovered, so the stop now follows the recent swing.');
-    if(!h.buy_date) notes.push('Add a buy date for the exact tax rate and stop.');
+    if(!h.buy_date) notes.push(isNum(flat)?'Add a buy date for a precise trailing stop.':'Add a buy date for the exact tax rate and stop.');
     out.push({...h,r,wacc,cost,value,pnl:value-cost,pnlPct:cost?value/cost-1:null,weight,action,detail,sellQty,stop,basis,days,toLT,br,notes});
   }
   const ord={EXIT:0,REDUCE:1,ADD:2,HOLD:3}; out.sort((a,b)=>ord[a.action]-ord[b.action]||b.value-a.value);
@@ -1022,17 +1038,21 @@ async function analyzePF(holdings){
 async function drawPF(force){
   const el=$('#pfOut'); if(!el) return;
   el.innerHTML='<div class="panel empty">Working out your advice</div>';
-  let holdings, local=true;
-  try { const c=await currentHoldings(force===true); holdings=c.rows; local=c.local; }
+  let holdings, local=true, flat=null;
+  try { const c=await currentHoldings(force===true); holdings=c.rows; local=c.local; flat=c.flat; }
   catch(err){ el.innerHTML=`<div class="panel empty"><b>Could not read the Google Sheet</b>${esc(err.message)}. Use “Edit connection” to check the address and key, or try “Refresh from sheet”.</div>`; $('#sheetInfo')&&($('#sheetInfo').textContent='Not connected'); return; }
   if(!holdings.length){ el.innerHTML= local ? '<div class="panel empty"><b>No holdings yet</b>Add a stock above, import your MeroShare WACC file, or connect a Google Sheet to get buy more, hold, reduce or exit advice for each position.</div>' : '<div class="panel empty"><b>No open positions in the sheet</b>Check that the tab has symbol and quantity columns with quantities above zero.</div>'; return; }
-  const {out,total,secVal,unknown}=await analyzePF(holdings);
+  const {out,total,secVal,unknown}=await analyzePF(holdings, flat);
+  const unk=unknown.map(h=>{ const base=h.symbol.endsWith('P')&&D.by[h.symbol.slice(0,-1)]; const q=fmt.i(h.quantity)+' shares'+(isNum(h.wacc)?' at WACC '+fmt.n(h.wacc):'');
+    return base?`<b>${esc(h.symbol)}</b> (${q}): promoter share, not traded often enough to screen. The ordinary share <a href="#" onclick="openStock('${base.symbol}');return false">${base.symbol}</a> is rated ${callR(base)} (score ${fmt.n(base.score,0)}).`
+      :`<b>${esc(h.symbol)}</b> (${q}): not in the screener (promoter share, debenture, mutual fund or a wrong symbol).`; });
   const cost=out.reduce((a,p)=>a+p.cost,0), pnl=total-cost, P=PFC(), maxSW=P.max_sector_weight??.4, reg=D.market.regime;
   const held=new Set(out.map(p=>p.symbol)), over=new Set(Object.entries(secVal).filter(([s,v])=>v/total>maxSW).map(([s])=>s));
   const ideas=D.rows.filter(r=>(r.stance_code>=1||r.accumulate)&&!held.has(r.symbol)&&!over.has(r.sector)).sort((a,b)=>b.score-a.score).slice(0,8);
   const advice=reg>=1?'Bull market. Stay invested and let winners run with trailing stops.':reg>0?'Recovery phase. Early-bottom signals: add selectively at half size with 2.5× ATR stops.':reg===0?'Sideways market. Be selective, take profits sooner and keep some cash.':`Bear market. Protect capital: aim for about ${fmt.p(P.bear_market_cash_target??.4,0)} cash. Buy only sector leaders or Accumulate-rated value stocks, in small lots.`;
   const cnt=a=>out.filter(p=>p.action===a).length;
-  el.innerHTML=`${unknown.length?`<div class="notice">Not found in the screener: ${unknown.map(esc).join(', ')}. Check the symbols.</div>`:''}
+  el.innerHTML=`${unk.map(t=>`<div class="notice">${t}</div>`).join('')}
+  ${isNum(flat)?`<div class="notice" style="background:none">Tax at the flat company rate of ${fmt.p(flat,0)} set in the sheet's bridge script.</div>`:''}
   <div class="strip"><div><div class="k">Market value</div><div class="v">Rs ${fmt.npr(total)}</div><div class="s">Cost Rs ${fmt.npr(cost)}</div></div>
     <div><div class="k">Unrealised profit</div><div class="v ${tone(pnl)}">Rs ${fmt.npr(pnl)}</div><div class="s ${tone(pnl)}">${fmt.sp(cost?pnl/cost:null)}</div></div>
     <div><div class="k">To do today</div><div class="v" style="font-size:20px"><span class="down">${cnt('EXIT')} exit</span>  <span style="color:var(--amber)">${cnt('REDUCE')} reduce</span>  <span class="up">${cnt('ADD')} add</span></div><div class="s">${cnt('HOLD')} hold</div></div>
@@ -1043,7 +1063,7 @@ async function drawPF(force){
       <td class="num ${tone(p.pnl)}">${fmt.npr(p.pnl)}<span class="nm" style="text-align:right">${fmt.sp(p.pnlPct)}</span></td><td class="num">${fmt.p(p.weight,0)}</td>
       <td>${callR(p.r)}<span class="nm">score ${fmt.n(p.r.score,0)}</span></td><td class="num" title="${esc(p.basis)}">${fmt.n(p.stop)}<span class="nm" style="text-align:right">${p.basis.startsWith('Super')?'Supertrend':'ATR trail'}</span></td>
       <td class="num">${fmt.npr(p.br.net)}<span class="nm ${tone(p.br.profit)}" style="text-align:right">${fmt.npr(p.br.profit)} profit</span></td>
-      <td>${fmt.p(p.br.rate,2)}${p.days!==null?`<span class="nm">${p.days} days held${p.toLT?`, long-term in ${p.toLT}`:''}</span>`:''}</td>
+      <td>${fmt.p(p.br.rate,2)}${p.days!==null?`<span class="nm">${p.days} days held${p.toLT&&!isNum(flat)?`, long-term in ${p.toLT}`:''}</span>`:''}</td>
       <td style="white-space:normal;min-width:260px;font-size:13.5px">${esc(p.detail)}${p.notes.length?`<div class="mut" style="margin-top:3px">${p.notes.map(esc).join('<br>')}</div>`:''}</td>
       <td>${local?`<button class="iconbtn" style="width:30px;height:30px" onclick="pfDel('${p.symbol}')" aria-label="Remove ${p.symbol}"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>`:''}</td></tr>`).join('')}</tbody></table></div>
   <p class="mut" style="font-size:13px">Cash if sold is after commission, SEBON fee, DP charge and capital gains tax at today’s price.</p>

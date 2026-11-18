@@ -1,6 +1,6 @@
 // NEPSE Screener service worker: the app shell works offline, data is
 // fetched fresh when online and served from cache when offline.
-const VERSION = 'nepse-screener-v3';
+const VERSION = 'nepse-screener-v4';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icons/icon.svg', './icons/icon-192.png', './icons/icon-512.png'];
 
 self.addEventListener('install', e => {
