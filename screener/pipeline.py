@@ -34,6 +34,11 @@ def best_day_offset(truth: pd.DataFrame, other: pd.DataFrame, max_shift: int = 3
     """Find k so that other.date + k days lines up with truth.date (OHLC match)."""
     if truth is None or other is None or len(truth) < 8 or len(other) < 8:
         return None
+    truth, other = truth.copy(), other.copy()
+    for df in (truth, other):
+        for c in ("open", "high", "low", "close"):
+            if c not in df:
+                df[c] = np.nan
     a = truth[["date", "open", "high", "low", "close"]].copy()
     a["date"] = pd.to_datetime(a["date"]).dt.normalize()
     best, best_score = None, 0.0
@@ -43,9 +48,12 @@ def best_day_offset(truth: pd.DataFrame, other: pd.DataFrame, max_shift: int = 3
         m = a.merge(b, on="date", suffixes=("_a", "_b"))
         if len(m) < 6:
             continue
-        same = np.ones(len(m), dtype=bool)
-        for c in ("open", "high", "low", "close"):
-            same &= (m[f"{c}_a"] - m[f"{c}_b"]).abs().to_numpy() <= 0.011
+        # NEPSE's history feed may omit some fields (e.g. open): compare closes,
+        # plus high/low where both sides have them
+        same = ((m["close_a"] - m["close_b"]).abs() <= 0.011).to_numpy().copy()
+        for c in ("high", "low"):
+            d = (m[f"{c}_a"] - m[f"{c}_b"]).abs()
+            same &= (d.isna() | (d <= 0.011)).to_numpy()
         score = same.mean()
         if score > best_score:
             best, best_score = k, score
@@ -101,11 +109,12 @@ class Pipeline:
                 try:
                     k = best_day_offset(self.nepse.history(sym, start), raw.history(sym, start, adjusted=False))
                 except Exception as e:  # noqa: BLE001
-                    log.debug("calibration with %s failed: %r", sym, e)
+                    log.info("calibration with %s failed: %r", sym, e)
                     continue
                 if k is not None:
                     off, how = k, f"measured on {sym}"
                     break
+                log.info("calibration with %s: no clear match", sym)
         if off is None:
             off = int(cal.get("merolagani_day_offset", -1))
             how = "last measured value" if "merolagani_day_offset" in cal else "default (observed Nov 2026)"
