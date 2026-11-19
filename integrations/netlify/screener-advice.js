@@ -156,10 +156,10 @@
         <span class="sca-act" style="background:${ACTION.REVIEW.bg};color:${ACTION.REVIEW.fg}!important">Review</span></div>
         <p class="sca-detail">${esc(n.note)}</p></div>`;
     });
-    const sw = s.sector_weights || {}, lim = s.sector_limit || 0.4;
+    const sw = s.sector_weights || {}, lim = (s.sector_limit && s.sector_limit < 1) ? s.sector_limit : Infinity;
     const secs = Object.keys(sw);
     if (secs.length) {
-      h += `<h3 class="sca-h3">Sector weights (limit ${Math.round(lim * 100)}%)</h3><table class="sca-ideas"><tbody>` +
+      h += `<h3 class="sca-h3">Sector weights${isFinite(lim) ? ` (limit ${Math.round(lim * 100)}%)` : ''}</h3><table class="sca-ideas"><tbody>` +
         secs.map(k => `<tr><td>${esc(k)}</td><td class="${sw[k] > lim ? 'sca-over' : ''}">${(sw[k] * 100).toFixed(1)}%</td></tr>`).join('') +
         '</tbody></table>';
     }

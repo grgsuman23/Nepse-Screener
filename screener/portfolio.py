@@ -53,7 +53,8 @@ def analyze(a: Analysis, holdings: pd.DataFrame, cfg: dict, cgt_flat: float | No
     k0 = pc.get("atr_stop_multiple", 3.0)
     hard = pc.get("hard_stop_pct", 0.15)
     max_w = pc.get("max_position_weight", 0.20)
-    max_sw = pc.get("max_sector_weight", 0.40)
+    max_sw = pc.get("max_sector_weight")          # None = no sector limit
+    max_sw = float(max_sw) if max_sw not in (None, "", "null") else float("inf")
     red_frac = pc.get("reduce_fraction", 0.5)
     tax_win = pc.get("tax_wait_window_days", 30)
     lt_days = cfg.get("costs", {}).get("long_term_days", 365)
@@ -141,22 +142,23 @@ def analyze(a: Analysis, holdings: pd.DataFrame, cfg: dict, cgt_flat: float | No
             action = "REDUCE"
             sell_qty = int(qty * (1 - max_w / weight))
             detail = f"Position is {weight:.0%} of the portfolio (limit {max_w:.0%}) — trim to control risk."
+        elif accumulate and weight < max_w * 0.8 and sw < max_sw:
+            action = "ADD"
+            detail = ("Value dip" + (" (STRONG BUY)" if code == 2 else " (BUY)") +
+                      ": cheap versus sector peers, ROE at or above the sector median and the price has stopped falling. "
+                      f"Add in small lots, about {size:.0%} of a normal position at a time.")
         elif code >= 1 and weight < max_w * 0.8 and sw < max_sw:
             action = "ADD"
             detail = "Model rates BUY" + (" (STRONG)" if code == 2 else "") + " and the trend is up — adding on dips is reasonable."
             if size < 1:
                 detail += f" Keep any addition to about {size:.0%} of a normal position for the current market."
-        elif accumulate and weight < max_w * 0.8 and sw < max_sw:
-            action = "ADD"
-            detail = (f"ACCUMULATE: cheap versus sector peers with solid ROE and the price stabilising. "
-                      f"Build gradually in small lots (about {size:.0%} of a normal position at a time).")
         notes = []
         if cgt_flat is None and action != "EXIT" and br["gain_before_tax"] > 0 and 0 < days_to_lt <= tax_win:
             saved = br["gain_before_tax"] * (costs.cgt_short - costs.cgt_long)
             notes.append(f"Hold {days_to_lt} more days for long-term CGT ({costs.cgt_long:.2%} vs {costs.cgt_short:.0%}) — saves ≈ Rs {saved:,.0f}.")
         elif cgt_flat is None and action == "EXIT" and br["gain_before_tax"] > 0 and 0 < days_to_lt <= 10 and "stop" not in detail:
             notes.append(f"Only {days_to_lt} days to long-term CGT; if the chart allows, waiting saves tax.")
-        if sw > max_sw:
+        if sw > max_sw:  # only when a sector limit is configured
             notes.append(f"Sector {r['sector']} is {sw:.0%} of the portfolio (limit {max_sw:.0%}).")
         if not r.get("liquid"):
             notes.append("Low liquidity — exits may take several sessions.")
@@ -187,7 +189,7 @@ def analyze(a: Analysis, holdings: pd.DataFrame, cfg: dict, cgt_flat: float | No
     summary = {
         "date": today.strftime("%Y-%m-%d"), "value": total_value, "cost": total_cost,
         "pnl": total_value - total_cost, "pnl_pct": total_value / total_cost - 1 if total_cost else None,
-        "positions": len(out), "unknown_symbols": unknown, "not_covered": not_covered, "sector_limit": max_sw, "regime": regime,
+        "positions": len(out), "unknown_symbols": unknown, "not_covered": not_covered, "sector_limit": max_sw if max_sw != float("inf") else 1.0, "regime": regime,
         "regime_advice": ("Bull market: stay invested, let winners run with trailing stops." if regime >= 1 else
                           "Recovery phase: early-bottom signals — add selectively with half-size positions and 2.5× ATR stops." if regime > 0 else
                           "Sideways market: be selective, book profits faster, keep some cash." if regime == 0 else

@@ -362,12 +362,13 @@ function writeAdvice_(adv) {
   // sector concentration
   const sw = s.sector_weights || {};
   const sec = Object.keys(sw).map(k => [k, sw[k]]);
-  sh.getRange(r, 1).setValue('Sector concentration (limit ' + Math.round((s.sector_limit || 0.4) * 100) + '% per sector)').setFontWeight('bold').setFontColor('#0C4DA1');
+  const lim = (s.sector_limit && s.sector_limit < 1) ? s.sector_limit : null;
+  sh.getRange(r, 1).setValue(lim ? 'Sector concentration (limit ' + Math.round(lim * 100) + '% per sector)' : 'Sector concentration').setFontWeight('bold').setFontColor('#0C4DA1');
   sh.getRange(r + 1, 1, 1, 2).setValues([['Sector', 'Weight']]).setFontWeight('bold').setBackground('#0C4DA1').setFontColor('#FFFFFF');
   if (sec.length) {
     sh.getRange(r + 2, 1, sec.length, 2).setValues(sec);
     sh.getRange(r + 2, 2, sec.length, 1).setNumberFormat('0.0%');
-    sh.getRange(r + 2, 2, sec.length, 1).setFontColors(sec.map(x => [x[1] > (s.sector_limit || 0.4) ? '#ED1B24' : '#000000']));
+    sh.getRange(r + 2, 2, sec.length, 1).setFontColors(sec.map(x => [lim && x[1] > lim ? '#ED1B24' : '#000000']));
   }
   r += 3 + sec.length;
   // ideas

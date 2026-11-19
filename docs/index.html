@@ -919,6 +919,8 @@ function parseCSV(text){
   return lines.slice(1).map(l=>{ const c=split(l); return {symbol:(c[iS]||'').toUpperCase(),quantity:num(c[iQ]),wacc:iW>=0?num(c[iW]):NaN,buy_date:iD>=0?(c[iD]||'').slice(0,10):''}; }).filter(h=>h.symbol&&h.quantity>0);
 }
 const COST=()=>(D.meta.settings||{}).costs||{}, PFC=()=>(D.meta.settings||{}).portfolio||{};
+/* sector limit from settings: null / missing / >= 100% means no limit */
+const sectorCap=P=>{ const v=P.max_sector_weight; return (v===null||v===undefined||v==='null'||+v>=1)?Infinity:+v; };
 function commission(v){ const c=COST(); for(const [lim,rate] of (c.broker_commission_tiers||[[null,.004]])) if(lim===null||v<=lim) return Math.max(c.min_commission||10,v*rate); return v*.0024; }
 function sellBreakdown(qty,px,basis,days,flat){ const c=COST(), v=qty*px, fees=commission(v)+v*(c.sebon_fee||.00015)+(c.dp_charge||25), gain=v-fees-basis;
   const rate=isNum(flat)?flat:days>(c.long_term_days||365)?(c.cgt_long_term??.0375):(c.cgt_short_term??.05), tax=Math.max(0,gain)*rate; return {net:v-fees-tax,profit:gain-tax,gain,rate,tax}; }
@@ -1009,7 +1011,7 @@ function dl(name, text){ const a=document.createElement('a'); a.href=URL.createO
 function pfTemplate(){ dl('portfolio_template.csv','symbol,quantity,wacc,buy_date\nNABIL,100,520.50,2025-06-15\n'); }
 function pfExport(){ dl('my_portfolio.csv','symbol,quantity,wacc,buy_date\n'+pfLoad().map(x=>[x.symbol,x.quantity,isNum(x.wacc)?x.wacc:'',x.buy_date||''].join(',')).join('\n')); }
 async function analyzePF(holdings, flat){
-  const P=PFC(), k0=P.atr_stop_multiple??3, hard=P.hard_stop_pct??.15, maxW=P.max_position_weight??.2, maxSW=P.max_sector_weight??.4, redF=P.reduce_fraction??.5, taxWin=P.tax_wait_window_days??30;
+  const P=PFC(), k0=P.atr_stop_multiple??3, hard=P.hard_stop_pct??.15, maxW=P.max_position_weight??.2, maxSW=sectorCap(P), redF=P.reduce_fraction??.5, taxWin=P.tax_wait_window_days??30;
   const c=COST(), lt=c.long_term_days||365, reg=D.market.regime, today=new Date(D.meta.last_trade_date);
   const pos=[], unknown=[]; let total=0;
   for(const h of holdings){ const r=D.by[h.symbol]; if(!r){ unknown.push(h); continue; } const value=h.quantity*r.close; total+=value; pos.push({h,r,value}); }
@@ -1031,8 +1033,8 @@ async function analyzePF(holdings, flat){
     else if(r.close<wacc*(1-hard)&&code<=0){ action='EXIT'; detail=`Down more than ${fmt.p(hard,0)} from your cost with no supporting trend. Cut the loss.`; sellQty=h.quantity; }
     else if(code===-1){ action='REDUCE'; sellQty=Math.floor(h.quantity*redF); detail=(r.rsi_14>((D.meta.settings.scoring||{}).overbought_rsi||80)&&r.close>wacc)?'Overextended rally. Book part of the profit.':'Trend is weakening. Reduce and keep the rest under the stop.'; }
     else if(weight>maxW){ action='REDUCE'; sellQty=Math.floor(h.quantity*(1-maxW/weight)); detail=`This is ${fmt.p(weight,0)} of your portfolio, above the ${fmt.p(maxW,0)} limit. Trim to control risk.`; }
+    else if(r.accumulate&&weight<maxW*.8&&sw<maxSW){ action='ADD'; detail=`Value dip (${code===2?'strong buy':'buy'}): cheap against sector peers, ROE at or above the sector median and the price has stopped falling. Add in small lots, about ${fmt.p(size,0)} of a normal position at a time.`; }
     else if(code>=1&&weight<maxW*.8&&sw<maxSW){ action='ADD'; detail=`Rated ${code===2?'strong buy':'buy'} in an uptrend. Adding on dips is reasonable.`+(size<1?` Keep any addition to about ${fmt.p(size,0)} of a normal position for this market.`:''); }
-    else if(r.accumulate&&weight<maxW*.8&&sw<maxSW){ action='ADD'; detail=`Accumulate: cheap against sector peers with solid ROE and the price stabilising. Build gradually in small lots, about ${fmt.p(size,0)} of a normal position at a time.`; }
     const notes=[];
     if(!isNum(flat)&&action!=='EXIT'&&br.gain>0&&toLT>0&&toLT<=taxWin) notes.push(`Hold ${toLT} more days to pay ${fmt.p(c.cgt_long_term,2)} tax instead of ${fmt.p(c.cgt_short_term,0)}, saving about Rs ${fmt.i(br.gain*((c.cgt_short_term||.05)-(c.cgt_long_term||.0375)))}.`);
     if(sw>maxSW) notes.push(`${r.sector} is ${fmt.p(sw,0)} of the portfolio (limit ${fmt.p(maxSW,0)}).`);
@@ -1056,7 +1058,7 @@ async function drawPF(force){
   const unk=unknown.map(h=>{ const base=h.symbol.endsWith('P')&&D.by[h.symbol.slice(0,-1)]; const q=fmt.i(h.quantity)+' shares'+(isNum(h.wacc)?' at WACC '+fmt.n(h.wacc):'');
     return base?`<b>${esc(h.symbol)}</b> (${q}): promoter share, not traded often enough to screen. The ordinary share <a href="#" onclick="openStock('${base.symbol}');return false">${base.symbol}</a> is rated ${callR(base)} (score ${fmt.n(base.score,0)}).`
       :`<b>${esc(h.symbol)}</b> (${q}): not in the screener (promoter share, debenture, mutual fund or a wrong symbol).`; });
-  const cost=out.reduce((a,p)=>a+p.cost,0), pnl=total-cost, P=PFC(), maxSW=P.max_sector_weight??.4, reg=D.market.regime;
+  const cost=out.reduce((a,p)=>a+p.cost,0), pnl=total-cost, P=PFC(), maxSW=sectorCap(P), reg=D.market.regime;
   const held=new Set(out.map(p=>p.symbol)), over=new Set(Object.entries(secVal).filter(([s,v])=>v/total>maxSW).map(([s])=>s));
   const ideas=D.rows.filter(r=>(r.stance_code>=1||r.accumulate)&&!held.has(r.symbol)&&!over.has(r.sector)).sort((a,b)=>b.score-a.score).slice(0,8);
   const advice=reg>=1?'Bull market. Stay invested and let winners run with trailing stops.':reg>0?'Recovery phase. Early-bottom signals: add selectively at half size with 2.5× ATR stops.':reg===0?'Sideways market. Be selective, take profits sooner and keep some cash.':`Bear market. Protect capital: aim for about ${fmt.p(P.bear_market_cash_target??.4,0)} cash. Buy only sector leaders or Accumulate-rated value stocks, in small lots.`;
@@ -1077,8 +1079,8 @@ async function drawPF(force){
       <td style="white-space:normal;min-width:260px;font-size:13.5px">${esc(p.detail)}${p.notes.length?`<div class="mut" style="margin-top:3px">${p.notes.map(esc).join('<br>')}</div>`:''}</td>
       <td>${local?`<button class="iconbtn" style="width:30px;height:30px" onclick="pfDel('${p.symbol}')" aria-label="Remove ${p.symbol}"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>`:''}</td></tr>`).join('')}</tbody></table></div>
   <p class="mut" style="font-size:13px">Cash if sold is after commission, SEBON fee, DP charge and capital gains tax at today’s price.</p>
-  <div class="grid cols-2 mt"><div class="panel"><h2>Sector mix</h2><p class="sub">Limit ${fmt.p(maxSW,0)} per sector</p><div id="donut"></div></div>
-    <div class="panel"><h2>Ideas for new money</h2><p class="sub">Highest-scoring buys and accumulate calls outside your over-weight sectors, with the suggested size for this market</p>
+  <div class="grid cols-2 mt"><div class="panel"><h2>Sector mix</h2><p class="sub">${isFinite(maxSW)?`Limit ${fmt.p(maxSW,0)} per sector`:'Share of the portfolio by sector'}</p><div id="donut"></div></div>
+    <div class="panel"><h2>Ideas for new money</h2><p class="sub">Highest-scoring buy calls you don't hold yet${isFinite(maxSW)?', outside your over-weight sectors':''}, with the suggested size for this market</p>
       ${ideas.length?ideas.map(r=>`<div class="pick" onclick="openStock('${r.symbol}')">${starBtn(r.symbol)}<div><span style="font-weight:700">${r.symbol}</span> ${callR(r)}<span class="mut" style="display:block;font-size:12.5px">${esc(r.sector)}</span></div>${spark(r.spark,72,26)}<div class="score num">${fmt.n(r.score,0)}</div></div>`).join('')
         :`<div class="empty"><b>No buy candidates</b>${reg<0?'Buying is paused in a bear market.':'Nothing meets the buy rules today.'}</div>`}</div></div>`;
   donut($('#donut'), Object.entries(secVal).sort((a,b)=>b[1]-a[1]).map(([s,v],i)=>({l:s,v,c:PAL[i%PAL.length],warn:v/total>maxSW})));

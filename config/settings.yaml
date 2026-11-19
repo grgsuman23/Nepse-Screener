@@ -154,7 +154,7 @@ portfolio:
   atr_stop_multiple: 3.0             # used when regime_policy sizing is off; otherwise stop_atr by regime
   hard_stop_pct: 0.15                # max loss from WACC before forced EXIT review
   max_position_weight: 0.20
-  max_sector_weight: 0.40
+  max_sector_weight: null            # no sector limit (was 0.40 until 19 Nov 2026); set e.g. 0.40 to cap a sector
   reduce_fraction: 0.5               # how much to sell on a REDUCE call
   tax_wait_window_days: 30           # suggest waiting if long-term CGT is this close
   bear_market_cash_target: 0.40
