@@ -1,0 +1,30 @@
+name: Probe data sources
+
+# Developer tool: prints what candidate data sources return, for building new fetchers.
+on:
+  workflow_dispatch:
+    inputs:
+      script:
+        description: "Script in tools/ to run"
+        required: true
+        default: probe_fundamentals.py
+      args:
+        description: "Arguments"
+        required: false
+        default: "NABIL"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: python tools/${{ inputs.script }} ${{ inputs.args }}
