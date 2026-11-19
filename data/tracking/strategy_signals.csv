@@ -1137,6 +1137,7 @@ date,strategy,symbol,signal,close,source
 2026-11-19,model_score,BNT,PICK,12750.0,live
 2026-11-19,model_score,GBIME,PICK,268.5,live
 2026-11-19,model_score,HPPL,PICK,417.1,live
+2026-11-19,model_score,JBBL,PICK,350.0,live
 2026-11-19,model_score,LBBL,PICK,524.6,live
 2026-11-19,model_score,MHNL,PICK,266.0,live
 2026-11-19,model_score,NBL,PICK,307.5,live
@@ -1151,6 +1152,7 @@ date,strategy,symbol,signal,close,source
 2026-11-19,model_sizing,BNT,PICK,12750.0,live
 2026-11-19,model_sizing,GBIME,PICK,268.5,live
 2026-11-19,model_sizing,HPPL,PICK,417.1,live
+2026-11-19,model_sizing,JBBL,PICK,350.0,live
 2026-11-19,model_sizing,LBBL,PICK,524.6,live
 2026-11-19,model_sizing,MHNL,PICK,266.0,live
 2026-11-19,model_sizing,NBL,PICK,307.5,live
@@ -1165,6 +1167,7 @@ date,strategy,symbol,signal,close,source
 2026-11-19,model_soft,BNT,PICK,12750.0,live
 2026-11-19,model_soft,GBIME,PICK,268.5,live
 2026-11-19,model_soft,HPPL,PICK,417.1,live
+2026-11-19,model_soft,JBBL,PICK,350.0,live
 2026-11-19,model_soft,LBBL,PICK,524.6,live
 2026-11-19,model_soft,MHNL,PICK,266.0,live
 2026-11-19,model_soft,NBL,PICK,307.5,live
