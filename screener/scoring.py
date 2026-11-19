@@ -164,7 +164,8 @@ def stance_policy(w: dict[str, pd.DataFrame], score: pd.DataFrame, cfg: dict, mo
             #   value dip in a bear market        80% made money, avg +8.7%, avg worst dip -3.7%
             #   sector leaders in a bear market   77%, +12.9% (kept)
             #   value dip in a recovery           50%, +0.7%   vs score-based buys there 29%, -4.0% (dropped)
-            #   any buy in a bull market          about a random stock: 69% in 2020-22, 17% in 2025-26 (kept)
+            #   any buy in a bull market          about a random stock: 69% in 2020-22, 17% in 2025-26
+            #                                     (kept, but capped at BUY)
             # Composite model 2023-26: 10.8% -> 11.8% a year (NEPSE 6.7%), max drawdown -22%.
             neutral = (mkt >= 0) & (mkt <= 0)
             if not rp.get("bear_leader_buys", True):
@@ -173,6 +174,13 @@ def stance_policy(w: dict[str, pd.DataFrame], score: pd.DataFrame, cfg: dict, mo
                 code[(code > 0) & recov] = 0
             if not rp.get("neutral_score_buys", True):
                 code[(code > 0) & neutral] = 0
+            # Score-based buys in neutral / bull markets are capped at BUY (size cap
+            # optional): 2023-26 they made money 38-47% of the time (+1.7-3.8%),
+            # while value-dip STRONG BUYs made money 79% of the time (+8.1%).
+            calm = (mkt >= 0) & ~recov
+            if rp.get("cap_score_buys_outside_bear", True):
+                code[(code == 2) & calm] = 1
+            size = size.where(~((code >= 1) & calm), np.minimum(size, rp.get("score_buy_size", 1.0)))
             code[dip & bear] = 2
             code[dip & recov] = 1
             acc = dip & (bear | recov)

@@ -142,6 +142,8 @@ scoring:
     bear_leader_buys: true
     recovery_score_buys: false
     neutral_score_buys: true
+    cap_score_buys_outside_bear: true # neutral / bull score-based buys are BUY, never STRONG BUY
+    score_buy_size: 1.0               # size cap for those buys; 0.5 tested: 2023-26 return 11.8% -> 8.8%, worst fall -22% -> -16%
     value_dip_size_bear: 0.5          # fraction of a normal position
     value_dip_size_recovery: 0.5
     accumulate_enabled: true

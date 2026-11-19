@@ -53,7 +53,7 @@ def test_modes_in_bear_market():
     assert code("combined", regime=-1, score=80) == 1       # bear: sector leaders keep their score-based buy
     assert code("combined", regime=-1, score=80, sector_regime=-1, rs=60) == 0
     assert code("combined", regime=0.5, score=80) == 0      # recovery: no score-based buys (value dips only)
-    assert code("combined", regime=1, score=80) == 2        # bull market: score-based buys remain
+    assert code("combined", regime=1, score=80) == 1        # bull market: score-based buys remain, capped at BUY
 
 
 def test_sizing_and_accumulate():
