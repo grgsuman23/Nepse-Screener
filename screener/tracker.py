@@ -161,8 +161,9 @@ def summarize(out: pd.DataFrame, label_col: str, horizons: list[int], cost: floa
             rec[f"avg_ret_{h}"] = float(rr.mean()) if len(rr) else None
             rec[f"med_ret_{h}"] = float(rr.median()) if len(rr) else None
             rec[f"avg_excess_{h}"] = float(ex.mean()) if len(ex) else None
-            net = rr - cost if d > 0 else rr
-            rec[f"success_{h}"] = (float((net > 0).mean()) if d > 0 else float((rr < 0).mean())) if (d != 0 and len(rr)) else None
+            # HOLD is scored like owning the stock (you keep it): made money = rose by more than costs
+            net = rr - cost if d >= 0 else rr
+            rec[f"success_{h}"] = (float((net > 0).mean()) if d >= 0 else float((rr < 0).mean())) if len(rr) else None
             rec[f"avg_net_{h}"] = float(net.mean()) if len(rr) else None
             mg, ml = g.get(f"maxgain_{h}"), g.get(f"maxloss_{h}")
             rec[f"avg_maxgain_{h}"] = float(mg.dropna().mean()) if mg is not None and mg.notna().any() else None
@@ -172,8 +173,8 @@ def summarize(out: pd.DataFrame, label_col: str, horizons: list[int], cost: floa
             #  rr_h      average best point / average worst point while held
             #            (sell calls: drop avoided / rise missed)
             #  Break-even success rate for a payoff p is 1 / (1 + p).
-            if d != 0 and len(rr):
-                good = (net > 0) if d > 0 else (rr < 0)
+            if len(rr):
+                good = (net > 0) if d >= 0 else (rr < 0)
                 gain = net[good].abs().mean() if good.any() else 0.0
                 loss = net[~good].abs().mean() if (~good).any() else None
                 rec[f"payoff_{h}"] = float(gain / loss) if loss else None
@@ -182,7 +183,7 @@ def summarize(out: pd.DataFrame, label_col: str, horizons: list[int], cost: floa
                 mgv = mg.dropna().mean() if mg is not None else None
                 mlv = ml.dropna().mean() if ml is not None else None
                 if mgv and mlv:
-                    rec[f"rr_{h}"] = float(mgv / abs(mlv)) if d > 0 else float(abs(mlv) / mgv)
+                    rec[f"rr_{h}"] = float(mgv / abs(mlv)) if d >= 0 else float(abs(mlv) / mgv)
                 else:
                     rec[f"rr_{h}"] = None
             else:
