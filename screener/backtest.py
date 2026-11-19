@@ -109,6 +109,10 @@ def metrics(equity: pd.Series, trades: list[Trade] | None, cfg: dict, exposure: 
             m["avg_loss"] = float(r[r <= 0].mean()) if (r <= 0).any() else 0.0
             m["profit_factor"] = float(wins.sum() / abs(losses.sum())) if losses.sum() < 0 else float("inf") if wins.sum() > 0 else 0.0
             m["expectancy"] = float(pnl.mean())
+            # reward : risk per trade = average winning trade / average losing trade (size, not count)
+            m["payoff_ratio"] = float(m["avg_win"] / abs(m["avg_loss"])) if m["avg_loss"] < 0 else None
+            m["max_trade_gain"] = float(r.max()) if len(r) else None
+            m["max_trade_loss"] = float(r.min()) if len(r) else None
             m["avg_hold_days"] = float(np.mean([t.hold_days for t in closed]))
             m["total_tax"] = float(sum(t.tax or 0 for t in closed))
             m["best_trade"] = float(r.max())

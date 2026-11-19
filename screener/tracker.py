@@ -167,6 +167,26 @@ def summarize(out: pd.DataFrame, label_col: str, horizons: list[int], cost: floa
             mg, ml = g.get(f"maxgain_{h}"), g.get(f"maxloss_{h}")
             rec[f"avg_maxgain_{h}"] = float(mg.dropna().mean()) if mg is not None and mg.notna().any() else None
             rec[f"avg_maxloss_{h}"] = float(ml.dropna().mean()) if ml is not None and ml.notna().any() else None
+            # risk : reward
+            #  payoff_h  average winning call / average losing call (by size)
+            #  rr_h      average best point / average worst point while held
+            #            (sell calls: drop avoided / rise missed)
+            #  Break-even success rate for a payoff p is 1 / (1 + p).
+            if d != 0 and len(rr):
+                good = (net > 0) if d > 0 else (rr < 0)
+                gain = net[good].abs().mean() if good.any() else 0.0
+                loss = net[~good].abs().mean() if (~good).any() else None
+                rec[f"payoff_{h}"] = float(gain / loss) if loss else None
+                rec[f"avg_win_{h}"] = float(gain) if good.any() else None
+                rec[f"avg_lossz_{h}"] = float(-loss) if loss else None
+                mgv = mg.dropna().mean() if mg is not None else None
+                mlv = ml.dropna().mean() if ml is not None else None
+                if mgv and mlv:
+                    rec[f"rr_{h}"] = float(mgv / abs(mlv)) if d > 0 else float(abs(mlv) / mgv)
+                else:
+                    rec[f"rr_{h}"] = None
+            else:
+                rec[f"payoff_{h}"] = rec[f"rr_{h}"] = rec[f"avg_win_{h}"] = rec[f"avg_lossz_{h}"] = None
             rec[f"worst5_{h}"] = float(net.quantile(0.05)) if len(rr) >= 20 else None
             rec[f"best95_{h}"] = float(net.quantile(0.95)) if len(rr) >= 20 else None
             if d != 0 and len(ex):
@@ -203,6 +223,13 @@ def information_coefficient(out: pd.DataFrame, h: int) -> dict:
             "top_quintile_ret": float(top) if top == top else None, "bottom_quintile_ret": float(bot) if bot == bot else None}
 
 
+def _payoff(net: pd.Series) -> float | None:
+    """Average winning call / average losing call (by size)."""
+    net = net.dropna()
+    w, l = net[net > 0], net[net <= 0]
+    return float(w.mean() / abs(l.mean())) if len(w) and len(l) and l.mean() < 0 else None
+
+
 def by_group(out: pd.DataFrame, group: str, h: int) -> list[dict]:
     rows = []
     if out.empty:
@@ -211,6 +238,7 @@ def by_group(out: pd.DataFrame, group: str, h: int) -> list[dict]:
     for k, g in o.groupby(group):
         rows.append({group: k if not isinstance(k, (np.integer,)) else int(k), "calls": int(len(g)),
                      "success": float((g[f"ret_{h}"] - COST > 0).mean()), "avg_net": float((g[f"ret_{h}"] - COST).mean()),
+                     "payoff": _payoff(g[f"ret_{h}"] - COST),
                      "hit": float((g[f"excess_{h}"] > 0).mean()), "avg_excess": float(g[f"excess_{h}"].mean())})
     return sorted(rows, key=lambda r: -r["calls"])
 
