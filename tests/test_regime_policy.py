@@ -50,17 +50,27 @@ def test_modes_in_bear_market():
     assert code("leaders", regime=-1, score=80) == 2        # leader keeps full call
     assert code("leaders", regime=-1, score=80, rs=60) == 0  # non-leader vetoed
     assert code("sizing", regime=-1, score=80) == 2
-    assert code("combined", regime=-1, score=80) == 1       # sector bull thresholds on adjusted 72
-    # combined: sector also bear and not a leader -> no buy
+    assert code("combined", regime=-1, score=80) == 1       # bear: sector leaders keep their score-based buy
     assert code("combined", regime=-1, score=80, sector_regime=-1, rs=60) == 0
+    assert code("combined", regime=0.5, score=80) == 0      # recovery: no score-based buys (value dips only)
+    assert code("combined", regime=1, score=80) == 2        # bull market: score-based buys remain
 
 
 def test_sizing_and_accumulate():
     w, s = frames(regime=-1, score=50, sector_regime=-1, rs=40)
     w["score_value"].iloc[0, 0] = 85
     res = stance_policy(w, s, CFG, "combined")
-    assert res["accumulate"].iloc[0, 0] == 1 and res["code"].iloc[0, 0] == 0
-    assert res["size"].iloc[0, 0] == 0.25 and res["stop"].iloc[0, 0] == 2.0
+    # value dip in a bear market -> STRONG BUY at half size
+    assert res["accumulate"].iloc[0, 0] == 1 and res["code"].iloc[0, 0] == 2
+    assert res["size"].iloc[0, 0] == 0.5 and res["stop"].iloc[0, 0] == 2.0
+    w["regime"].iloc[0, 0] = 0.5                                      # recovery -> BUY
+    assert stance_policy(w, s, CFG, "combined")["code"].iloc[0, 0] == 1
+    w["regime"].iloc[0, 0] = 0.0                                      # neutral -> no buy
+    assert stance_policy(w, s, CFG, "combined")["code"].iloc[0, 0] == 0
+    cfg_old = {**CFG, "scoring": {**CFG["scoring"], "regime_policy": {**CFG["scoring"]["regime_policy"], "buy_rule": "accumulate"}}}
+    w["regime"].iloc[0, 0] = -1.0
+    res = stance_policy(w, s, cfg_old, "combined")
+    assert res["accumulate"].iloc[0, 0] == 1 and res["code"].iloc[0, 0] == 0 and res["size"].iloc[0, 0] == 0.25
     w, s = frames(regime=1, score=80)
     res = stance_policy(w, s, CFG, "combined")
     assert res["size"].iloc[0, 0] == 1.0 and res["stop"].iloc[0, 0] == 3.0 and res["accumulate"].iloc[0, 0] == 0

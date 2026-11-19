@@ -93,6 +93,8 @@ def forward_returns(a: Analysis, calls: pd.DataFrame, horizons: list[int]) -> pd
         pos[miss] = dates.searchsorted(pd.to_datetime(calls["date"][miss]), side="right") - 1
     col = close.columns.get_indexer(calls["symbol"])
     C = close.to_numpy(dtype=float)
+    Hh = a.w["high"].reindex(columns=close.columns).to_numpy(dtype=float) if "high" in a.w else C
+    Ll = a.w["low"].reindex(columns=close.columns).to_numpy(dtype=float) if "low" in a.w else C
     I = idx.to_numpy(dtype=float)
     out = calls.copy()
     ok = (pos >= 0) & (col >= 0)
@@ -107,9 +109,19 @@ def forward_returns(a: Analysis, calls: pd.DataFrame, horizons: list[int]) -> pd
         b = np.full(len(calls), np.nan)
         r[valid] = C[fp[valid], col[valid]] / base[valid] - 1
         b[valid] = I[fp[valid]] / ibase[valid] - 1
+        # best and worst point reached while holding (from the next session to day h)
+        mx = np.full(len(calls), np.nan)
+        mn = np.full(len(calls), np.nan)
+        for k in np.where(valid)[0]:
+            p0, j = pos[k], col[k]
+            hi = np.nanmax(Hh[p0 + 1: p0 + h + 1, j]) if h > 0 else np.nan
+            lo = np.nanmin(Ll[p0 + 1: p0 + h + 1, j]) if h > 0 else np.nan
+            mx[k], mn[k] = hi / base[k] - 1, lo / base[k] - 1
         out[f"ret_{h}"] = r
         out[f"bench_{h}"] = b
         out[f"excess_{h}"] = r - b
+        out[f"maxgain_{h}"] = mx
+        out[f"maxloss_{h}"] = mn
     return out
 
 
@@ -122,7 +134,20 @@ def _direction(label: str) -> int:
     return 0
 
 
-def summarize(out: pd.DataFrame, label_col: str, horizons: list[int]) -> list[dict]:
+COST = 0.009
+
+
+def summarize(out: pd.DataFrame, label_col: str, horizons: list[int], cost: float | None = None) -> list[dict]:
+    """Per call type and horizon.
+
+    Absolute (what you can actually earn — NEPSE has no index fund or futures):
+      success_h     buy calls: share that made money after round-trip costs;
+                    reduce / exit calls: share where the price then fell
+      avg_net_h     average return after costs (buy) or average move avoided (sell)
+      avg_maxgain_h / avg_maxloss_h   best / worst point reached while holding
+      worst5_h / best95_h             5th / 95th percentile return
+    Relative (secondary): hit_h / avg_excess_h versus the NEPSE index."""
+    cost = COST if cost is None else cost
     rows = []
     if out.empty:
         return rows
@@ -136,6 +161,14 @@ def summarize(out: pd.DataFrame, label_col: str, horizons: list[int]) -> list[di
             rec[f"avg_ret_{h}"] = float(rr.mean()) if len(rr) else None
             rec[f"med_ret_{h}"] = float(rr.median()) if len(rr) else None
             rec[f"avg_excess_{h}"] = float(ex.mean()) if len(ex) else None
+            net = rr - cost if d > 0 else rr
+            rec[f"success_{h}"] = (float((net > 0).mean()) if d > 0 else float((rr < 0).mean())) if (d != 0 and len(rr)) else None
+            rec[f"avg_net_{h}"] = float(net.mean()) if len(rr) else None
+            mg, ml = g.get(f"maxgain_{h}"), g.get(f"maxloss_{h}")
+            rec[f"avg_maxgain_{h}"] = float(mg.dropna().mean()) if mg is not None and mg.notna().any() else None
+            rec[f"avg_maxloss_{h}"] = float(ml.dropna().mean()) if ml is not None and ml.notna().any() else None
+            rec[f"worst5_{h}"] = float(net.quantile(0.05)) if len(rr) >= 20 else None
+            rec[f"best95_{h}"] = float(net.quantile(0.95)) if len(rr) >= 20 else None
             if d != 0 and len(ex):
                 rec[f"hit_{h}"] = float(((ex > 0) if d > 0 else (ex < 0)).mean())
                 rec[f"abs_hit_{h}"] = float(((rr > 0) if d > 0 else (rr < 0)).mean())
@@ -177,6 +210,7 @@ def by_group(out: pd.DataFrame, group: str, h: int) -> list[dict]:
     o = out[out["stance_code"] >= 1].dropna(subset=[f"excess_{h}"])
     for k, g in o.groupby(group):
         rows.append({group: k if not isinstance(k, (np.integer,)) else int(k), "calls": int(len(g)),
+                     "success": float((g[f"ret_{h}"] - COST > 0).mean()), "avg_net": float((g[f"ret_{h}"] - COST).mean()),
                      "hit": float((g[f"excess_{h}"] > 0).mean()), "avg_excess": float(g[f"excess_{h}"].mean())})
     return sorted(rows, key=lambda r: -r["calls"])
 
@@ -186,8 +220,12 @@ def rolling_hit(out: pd.DataFrame, h: int) -> list[dict]:
     if o.empty:
         return []
     o["month"] = pd.to_datetime(o["date"]).dt.to_period("M").astype(str)
-    g = o.groupby("month")[f"excess_{h}"]
-    return [{"month": m, "hit": float((s > 0).mean()), "avg_excess": float(s.mean()), "calls": int(len(s))} for m, s in g]
+    rows = []
+    for m, g in o.groupby("month"):
+        ex, r = g[f"excess_{h}"], g[f"ret_{h}"] - COST
+        rows.append({"month": m, "success": float((r > 0).mean()), "avg_net": float(r.mean()),
+                     "hit": float((ex > 0).mean()), "avg_excess": float(ex.mean()), "calls": int(len(g))})
+    return rows
 
 
 def simulated_calls(a: Analysis, days: int, step: int = 5) -> pd.DataFrame:
@@ -215,9 +253,11 @@ def simulated_calls(a: Analysis, days: int, step: int = 5) -> pd.DataFrame:
 
 
 def evaluate_all(a: Analysis, paths: Paths, cfg: dict) -> dict:
+    global COST
+    COST = float(cfg.get("tracking", {}).get("round_trip_cost", COST))
     hz = cfg.get("tracking", {}).get("horizons", [5, 20, 60])
     main_h = hz[1] if len(hz) > 1 else hz[0]
-    res: dict = {"horizons": hz, "main_horizon": main_h}
+    res: dict = {"horizons": hz, "main_horizon": main_h, "round_trip_cost": COST}
     # ---- live model calls
     f = paths.tracking / "recommendations.csv"
     live = pd.read_csv(f, dtype={"symbol": str}) if f.exists() else pd.DataFrame(columns=REC_COLS)
@@ -235,7 +275,7 @@ def evaluate_all(a: Analysis, paths: Paths, cfg: dict) -> dict:
     }
     recent = live_out[live_out["stance_code"] != 0].sort_values("date", ascending=False).head(300) if len(live_out) else live_out
     res["live"]["recent"] = recent[[c for c in ["date", "symbol", "sector", "stance", "score", "close"] +
-                                    [f"ret_{h}" for h in hz] + [f"excess_{h}" for h in hz] if c in recent]].to_dict("records") if len(recent) else []
+                                    [f"ret_{h}" for h in hz] + [f"excess_{h}" for h in hz] + [f"maxgain_{h}" for h in hz] + [f"maxloss_{h}" for h in hz] if c in recent]].to_dict("records") if len(recent) else []
     # ---- simulated history
     sim = simulated_calls(a, int(cfg.get("tracking", {}).get("simulated_history_days", 750)))
     sim_out = forward_returns(a, sim, hz) if len(sim) else sim

@@ -150,14 +150,38 @@ def stance_policy(w: dict[str, pd.DataFrame], score: pd.DataFrame, cfg: dict, mo
 
     acc = pd.DataFrame(False, index=score.index, columns=score.columns)
     if mode == "combined" and rp.get("accumulate_enabled", True) and "score_value" in w:
+        # "value dip": cheap versus sector peers, ROE at least the sector median,
+        # profitable, NPL acceptable, the price has stopped falling (Supertrend up
+        # or back above the 50-day EMA) and the stock is not already a momentum buy.
         npl_ok = w["npl"].isna() | (w["npl"] <= rp.get("accumulate_max_npl", 0.05)) if "npl" in w else True
-        mkt_ok = (mkt < 0) | ((mkt > 0) & (mkt < 1))           # bear or recovery
-        acc = (mkt_ok & (w["score_value"] >= rp.get("accumulate_value_min", 75)) & (w["eps"] > 0)
+        dip = ((w["score_value"] >= rp.get("accumulate_value_min", 75)) & (w["eps"] > 0)
                & (w["roe_pct_sector"] >= rp.get("accumulate_quality_pct_min", 0.5)) & npl_ok
-               & ((w["st_dir"] > 0) | (close > w["ema_50"])) & liquid & code.isin([0, -1]))
-        acc = acc.fillna(False).astype(bool)
-        code[acc] = 0
-        size = size.where(~acc, np.minimum(size, rp.get("accumulate_size", 0.25)))
+               & ((w["st_dir"] > 0) | (close > w["ema_50"])) & liquid & code.isin([0, -1])).fillna(False).astype(bool)
+        bear, recov = mkt < 0, (mkt > 0) & (mkt < 1)
+        if rp.get("buy_rule", "value_dip") == "value_dip":
+            # Calls rebuilt 19 Nov 2026 from absolute outcomes (after ~0.9% costs),
+            # point-in-time data 2023-26, 60 sessions after the call:
+            #   value dip in a bear market        80% made money, avg +8.7%, avg worst dip -3.7%
+            #   sector leaders in a bear market   77%, +12.9% (kept)
+            #   value dip in a recovery           50%, +0.7%   vs score-based buys there 29%, -4.0% (dropped)
+            #   any buy in a bull market          about a random stock: 69% in 2020-22, 17% in 2025-26 (kept)
+            # Composite model 2023-26: 10.8% -> 11.8% a year (NEPSE 6.7%), max drawdown -22%.
+            neutral = (mkt >= 0) & (mkt <= 0)
+            if not rp.get("bear_leader_buys", True):
+                code[(code > 0) & bear] = 0
+            if not rp.get("recovery_score_buys", False):
+                code[(code > 0) & recov] = 0
+            if not rp.get("neutral_score_buys", True):
+                code[(code > 0) & neutral] = 0
+            code[dip & bear] = 2
+            code[dip & recov] = 1
+            acc = dip & (bear | recov)
+            size = size.where(~(dip & bear), rp.get("value_dip_size_bear", 0.5))
+            size = size.where(~(dip & recov), rp.get("value_dip_size_recovery", 0.5))
+        else:  # previous behaviour: ACCUMULATE label, small size
+            acc = dip & (bear | recov)
+            code[acc] = 0
+            size = size.where(~acc, np.minimum(size, rp.get("accumulate_size", 0.25)))
 
     valid = score.notna()
     return {"code": code.where(valid), "score_adj": adj.where(valid).round(1), "leader": leader.astype(float),

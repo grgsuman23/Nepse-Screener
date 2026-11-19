@@ -133,7 +133,17 @@ scoring:
     # rule 5 — suggested position size (fraction of normal) and ATR stop multiple
     position_size: {bull: 1.0, recovery: 0.5, neutral: 0.5, bear: 0.25}
     stop_atr:      {bull: 3.0, recovery: 2.5, neutral: 2.5, bear: 2.0}
-    # rule 6 — ACCUMULATE: long-term value buying in bear / recovery markets
+    # rule 6 — buy rule. value_dip (since 19 Nov 2026): a value dip (cheap vs sector,
+    # ROE >= sector median, profitable, price stabilising) is a STRONG BUY in a bear
+    # market and a BUY in a recovery. Score-based buys stay for sector leaders in a
+    # bear market and in neutral / bull markets, and are dropped in a recovery.
+    # "accumulate" = the earlier behaviour (ACCUMULATE label, quarter size).
+    buy_rule: value_dip
+    bear_leader_buys: true
+    recovery_score_buys: false
+    neutral_score_buys: true
+    value_dip_size_bear: 0.5          # fraction of a normal position
+    value_dip_size_recovery: 0.5
     accumulate_enabled: true
     accumulate_value_min: 75          # value score (sector-relative) at least this
     accumulate_quality_pct_min: 0.5   # ROE at least sector median
@@ -170,8 +180,9 @@ optimize:
 
 tracking:
   horizons: [5, 20, 60]              # trading days after a call to evaluate it
+  round_trip_cost: 0.009             # commission x2 + SEBON + DP: a buy call 'made money' only above this
   simulated_history_days: 750        # build a simulated track record over this window
-  model_version: "1.0"
+  model_version: "2.0"   # 19 Nov 2026: value-dip buy rule, weights B, point-in-time fundamentals
   # Your portfolio's own action log reveals what you hold. Keep this false
   # unless the GitHub repository is PRIVATE. (Model calls for every stock —
   # including the ones you hold — are always tracked.)
