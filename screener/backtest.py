@@ -184,7 +184,8 @@ class Backtester:
         if strategy.get("regime_filter"):
             reg_ok = self.ev.mask(strategy["regime_filter"]).to_numpy()[rows].any(axis=1)
 
-        limit = mk.get("circuit_limit", 0.10)
+        from screener.config import circuit_limit_on
+        LIM = np.array([circuit_limit_on(cfg, d) for d in dates])  # 10% until 19 Apr 2026, then 15%
         settle = int(mk.get("settlement_days", 2))
         min_lot = int(mk.get("min_lot", 10))
         max_vol = cfg.get("liquidity", {}).get("max_pct_of_volume", 0.10)
@@ -250,7 +251,7 @@ class Backtester:
                     continue
                 if not TR[i, j]:
                     continue
-                locked_down = H[i, j] == L[i, j] and prevC[i, j] > 0 and C[i, j] <= prevC[i, j] * (1 - limit * 0.95)
+                locked_down = H[i, j] == L[i, j] and prevC[i, j] > 0 and C[i, j] <= prevC[i, j] * (1 - LIM[i] * 0.95)
                 if locked_down:
                     continue
                 px = price_at(i, j)
@@ -275,7 +276,7 @@ class Backtester:
                 for j, why in pend_buy[: max(0, n_slots)]:
                     if j in pos or not TR[i, j]:
                         continue
-                    locked_up = H[i, j] == L[i, j] and prevC[i, j] > 0 and C[i, j] >= prevC[i, j] * (1 + limit * 0.95)
+                    locked_up = H[i, j] == L[i, j] and prevC[i, j] > 0 and C[i, j] >= prevC[i, j] * (1 + LIM[i] * 0.95)
                     if locked_up:
                         continue
                     px = price_at(i, j)

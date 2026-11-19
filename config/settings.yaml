@@ -26,14 +26,19 @@ data:
     - Preference Share
   exclude_symbol_patterns: ["^.*PO$", "^.*D\\d{2,4}$", "^.*PR$"]   # promoter / debenture style tickers
   min_history_days: 60               # stocks with less history are listed but not scored
-  corporate_action_threshold: -0.11  # one-day drop beyond the 10% circuit => treated as bonus/right adjustment
+  # a one-day drop beyond the daily price limit => treated as a bonus/right adjustment
+  # (the limit was 10% until 2026-04-19 and 15% from 2026-04-20)
+  corporate_action_threshold: -0.11
 
 market:
   face_value: 100                    # NPR face value used for dividend-yield maths
-  circuit_limit: 0.10                # NEPSE daily price band (±10%)
+  circuit_limit: 0.15                # NEPSE daily price band per stock (±15% since 20 Apr 2026)
+  circuit_limit_history:             # [from date, limit]; used for backtests and corporate-action detection
+    - ["2000-01-01", 0.10]
+    - ["2026-04-20", 0.15]
   settlement_days: 2                 # T+2
   min_lot: 10                        # minimum regular-market order (kitta)
-  trading_days_per_year: 230         # NEPSE trades Sun–Thu, minus holidays
+  trading_days_per_year: 230         # NEPSE trades Mon–Fri (Sun–Thu until 2025), minus holidays
 
 liquidity:
   min_avg_turnover: 2000000          # NPR 20-day average turnover to be "liquid"
@@ -80,15 +85,22 @@ regime:
 #  Missing factors (e.g. no fundamentals yet) are re-weighted away.
 # ---------------------------------------------------------------------
 scoring:
+  # Re-weighted 19 Nov 2026 from a factor study on 2020-2026 data (rank IC vs
+  # forward excess return): value and quality predicted best; trend was close to
+  # zero; 3-6 month momentum slightly reversed; high turnover predicted
+  # underperformance, so liquidity is kept only as a tradability filter.
+  # Score IC (60 sessions) 0.020 -> 0.043, better in both 2020-23 and 2024-26.
+  # Previous weights: trend .22 momentum .18 volume .08 timing .05 sector .10
+  # value .17 quality .15 liquidity .05
   weights:
-    trend: 0.22
-    momentum: 0.18
+    trend: 0.25
+    momentum: 0.08
     volume: 0.08
-    timing: 0.05
+    timing: 0.07
     sector: 0.10
-    value: 0.17
-    quality: 0.15
-    liquidity: 0.05
+    value: 0.20
+    quality: 0.17
+    liquidity: 0.0
   stance_thresholds:
     strong_buy: 75
     buy: 62

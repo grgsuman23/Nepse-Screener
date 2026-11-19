@@ -165,3 +165,20 @@ def test_blend_strategy_combines_sleeves(demo):
     one = {"id": "x", "type": "blend", "rebalance": "quarterly", "sleeves": [{"use": "quality_value", "weight": 1}]}
     q = bt.run(materialize_strategy({x["id"]: x for x in load_strategies()}["quality_value"]))
     assert abs(bt.run(one).equity.iloc[-1] / q.equity.iloc[-1] - 1) < 1e-6
+
+
+def test_circuit_limit_is_date_aware():
+    import pandas as pd
+
+    from screener.adjust import auto_adjust
+    from screener.config import circuit_limit_on
+
+    cfg = load_settings()
+    assert circuit_limit_on(cfg, "2026-04-17") == 0.10
+    assert circuit_limit_on(cfg, "2026-04-20") == 0.15
+    # a 14% fall is a corporate action under the old 10% limit, a normal day under the new 15% one
+    df = pd.DataFrame({"date": pd.to_datetime(["2025-01-05", "2025-01-06", "2026-06-01", "2026-06-02"]),
+                       "open": [100, 86, 100, 86], "high": [100, 86, 100, 86], "low": [100, 86, 100, 86],
+                       "close": [100, 86, 100, 86], "volume": [1, 1, 1, 1]})
+    _, ev = auto_adjust(df, "X", -0.11, lambda d: circuit_limit_on(cfg, d))
+    assert [e["date"] for e in ev] == ["2025-01-06"]

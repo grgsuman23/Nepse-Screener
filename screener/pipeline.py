@@ -229,7 +229,8 @@ class Pipeline:
                 elif src == "nepse_api" and self.nepse is not None:
                     df = self.nepse.history(symbol, start)
                     if len(df) > 5:
-                        df, events = auto_adjust(df, symbol, th)
+                        from screener.config import circuit_limit_on
+                        df, events = auto_adjust(df, symbol, th, lambda d: circuit_limit_on(self.cfg, d))
                         store.append_corporate_actions(self.paths, events)
                         return df, src
             except Exception as e:

@@ -116,3 +116,18 @@ def materialize_strategy(strategy: dict, params: dict | None = None) -> dict:
 
 def k_is_int(text: str) -> bool:
     return "." not in text and "e" not in text.lower()
+
+
+def circuit_limit_on(cfg: dict, when) -> float:
+    """NEPSE's per-stock daily price limit in force on a date (10% until
+    2026-04-19, 15% from 2026-04-20, per settings.market.circuit_limit_history)."""
+    import pandas as pd
+
+    mk = cfg.get("market", {})
+    hist = mk.get("circuit_limit_history") or []
+    d = pd.Timestamp(when)
+    lim = None
+    for start, val in sorted(hist, key=lambda x: str(x[0])):
+        if d >= pd.Timestamp(start):
+            lim = float(val)
+    return lim if lim is not None else float(mk.get("circuit_limit", 0.10))

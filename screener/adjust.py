@@ -24,8 +24,13 @@ def _rescale_before(df: pd.DataFrame, idx: int, factor: float) -> pd.DataFrame:
     return df
 
 
-def auto_adjust(df: pd.DataFrame, symbol: str, threshold: float = -0.11) -> tuple[pd.DataFrame, list[dict]]:
-    """Detect and back-adjust corporate actions in an unadjusted series."""
+def auto_adjust(df: pd.DataFrame, symbol: str, threshold: float = -0.11, limit_on=None) -> tuple[pd.DataFrame, list[dict]]:
+    """Detect and back-adjust corporate actions in an unadjusted series.
+
+    A one-day fall larger than the exchange's price limit can only be a
+    corporate action. `limit_on(date)` gives the limit in force that day (10%
+    until 19 Apr 2026, 15% after); the threshold is that limit plus the same
+    1-point margin as the fixed `threshold`."""
     if df is None or len(df) < 2:
         return df, []
     df = df.sort_values("date").reset_index(drop=True)
@@ -43,7 +48,8 @@ def auto_adjust(df: pd.DataFrame, symbol: str, threshold: float = -0.11) -> tupl
                 factor = pc / prev_c
         if factor is None:
             gap = df.at[i, "open"] / prev_c - 1 if df.at[i, "open"] == df.at[i, "open"] else df.at[i, "close"] / prev_c - 1
-            if gap < threshold:
+            th = threshold if limit_on is None else -(limit_on(df.at[i, "date"]) + (-threshold - 0.10))
+            if gap < th:
                 factor = df.at[i, "close"] / prev_c
         if factor is not None and 0.2 < factor < 0.99:
             df = _rescale_before(df, i, factor)
