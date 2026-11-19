@@ -1115,6 +1115,7 @@ date,strategy,symbol,signal,close,source
 2026-11-19,core_satellite,UNL,PICK,48100.0,live
 2026-11-19,model_leaders,GBIME,PICK,268.5,live
 2026-11-19,model_leaders,HURJA,PICK,264.0,live
+2026-11-19,model_leaders,MANDU,PICK,820.0,live
 2026-11-19,model_leaders,MBJC,PICK,325.9,live
 2026-11-19,model_leaders,NBL,PICK,307.5,live
 2026-11-19,model_leaders,NMB,PICK,275.0,live
@@ -1128,6 +1129,7 @@ date,strategy,symbol,signal,close,source
 2026-11-19,model_score,LBBL,PICK,524.6,live
 2026-11-19,model_score,NBL,PICK,307.5,live
 2026-11-19,model_score,NMB,PICK,275.0,live
+2026-11-19,model_score,NTC,PICK,940.0,live
 2026-11-19,model_score,PCBL,PICK,270.9,live
 2026-11-19,model_score,SANIMA,PICK,402.7,live
 2026-11-19,model_score,SHPC,PICK,556.0,live
@@ -1138,6 +1140,7 @@ date,strategy,symbol,signal,close,source
 2026-11-19,model_sizing,LBBL,PICK,524.6,live
 2026-11-19,model_sizing,NBL,PICK,307.5,live
 2026-11-19,model_sizing,NMB,PICK,275.0,live
+2026-11-19,model_sizing,NTC,PICK,940.0,live
 2026-11-19,model_sizing,PCBL,PICK,270.9,live
 2026-11-19,model_sizing,SANIMA,PICK,402.7,live
 2026-11-19,model_sizing,SHPC,PICK,556.0,live
@@ -1148,6 +1151,7 @@ date,strategy,symbol,signal,close,source
 2026-11-19,model_soft,LBBL,PICK,524.6,live
 2026-11-19,model_soft,NBL,PICK,307.5,live
 2026-11-19,model_soft,NMB,PICK,275.0,live
+2026-11-19,model_soft,NTC,PICK,940.0,live
 2026-11-19,model_soft,PCBL,PICK,270.9,live
 2026-11-19,model_soft,SANIMA,PICK,402.7,live
 2026-11-19,model_soft,SHPC,PICK,556.0,live
