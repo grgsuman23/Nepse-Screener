@@ -85,21 +85,23 @@ regime:
 #  Missing factors (e.g. no fundamentals yet) are re-weighted away.
 # ---------------------------------------------------------------------
 scoring:
-  # Re-weighted 19 Nov 2026 from a factor study on 2020-2026 data (rank IC vs
-  # forward excess return): value and quality predicted best; trend was close to
-  # zero; 3-6 month momentum slightly reversed; high turnover predicted
-  # underperformance, so liquidity is kept only as a tradability filter.
-  # Score IC (60 sessions) 0.020 -> 0.043, better in both 2020-23 and 2024-26.
-  # Previous weights: trend .22 momentum .18 volume .08 timing .05 sector .10
-  # value .17 quality .15 liquidity .05
+  # Weights from factor studies on 2020-2026 data (rank IC of each factor score
+  # vs forward excess return over NEPSE). The decisive test used point-in-time
+  # fundamentals from NEPSE filings, 2023-01 to 2026-11: value IC(60d) 0.149,
+  # quality 0.071, trend 0.019, momentum ~0, liquidity -0.089 (high turnover
+  # lags). Composite score IC(60d): old weights 0.058, previous set 0.078,
+  # these 0.114 (set chosen before the clean test was run).
+  # History: until 19 Nov 2026 trend .22 momentum .18 volume .08 timing .05
+  # sector .10 value .17 quality .15 liquidity .05; then briefly trend .25
+  # momentum .08 volume .08 timing .07 sector .10 value .20 quality .17.
   weights:
-    trend: 0.25
-    momentum: 0.08
-    volume: 0.08
-    timing: 0.07
-    sector: 0.10
-    value: 0.20
-    quality: 0.17
+    trend: 0.15
+    momentum: 0.05
+    volume: 0.05
+    timing: 0.05
+    sector: 0.05
+    value: 0.38
+    quality: 0.27
     liquidity: 0.0
   stance_thresholds:
     strong_buy: 75
