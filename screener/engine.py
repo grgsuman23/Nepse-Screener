@@ -151,7 +151,7 @@ def build(cfg: dict, paths: Paths, prices: dict[str, pd.DataFrame] | None = None
     # --- fundamentals
     snaps = store.load_snapshots(paths)
     reports = store.read_reports(paths)
-    mode = fmod.choose_mode(snaps, calendar[-1], cfg.get("backtest", {}).get("fundamentals_mode", "auto"), reports)
+    fund_mode = mode = fmod.choose_mode(snaps, calendar[-1], cfg.get("backtest", {}).get("fundamentals_mode", "auto"), reports)
     if len(fund_latest) == 0 and (snaps is None or snaps.empty):
         warnings.append("No fundamentals yet — run `python run.py fundamentals`. Value/quality factors are skipped.")
     else:
@@ -200,4 +200,4 @@ def build(cfg: dict, paths: Paths, prices: dict[str, pd.DataFrame] | None = None
         market = market[market.index >= s]
         sectors = {k: v[v.index >= s] for k, v in sectors.items()}
     return Analysis(w=w, market=market, sectors=sectors, universe=uni, sector_of=sector_of, name_of=name_of,
-                    last_traded=last_traded, fundamentals_mode=mode, index_source=index_source, warnings=warnings)
+                    last_traded=last_traded, fundamentals_mode=fund_mode, index_source=index_source, warnings=warnings)
