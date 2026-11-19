@@ -376,6 +376,37 @@ class Pipeline:
             n += 1
         return n
 
+    # ------------------------------------------------------------ fiscal reports
+    def update_reports(self, symbols: list[str] | None = None, limit: int | None = None) -> int:
+        """Download NEPSE fiscal-report filings (point-in-time EPS / net worth)."""
+        if self.nepse is None:
+            self._mark("nepse_api:reports", False, "NEPSE API unavailable")
+            return 0
+        uni = store.read_universe(self.paths)
+        symbols = symbols or uni["symbol"].tolist()
+        if limit:
+            symbols = symbols[:limit]
+        ids = self.nepse.company_ids()
+        frames, ok, fail = [], 0, 0
+        for i, sym in enumerate(symbols, 1):
+            try:
+                df = self.nepse.fiscal_reports(sym, ids.get(sym))
+                if len(df):
+                    frames.append(df)
+                ok += 1
+            except Exception as e:  # noqa: BLE001
+                fail += 1
+                log.debug("reports failed for %s: %s", sym, e)
+            if i % 50 == 0:
+                log.info("  reports %d/%d", i, len(symbols))
+        if frames:
+            allr = pd.concat(frames, ignore_index=True)
+            store.write_reports(self.paths, allr)
+            log.info("Fiscal reports: %d filings for %d companies (%d failed)", len(allr), allr["symbol"].nunique(), fail)
+        self._mark("nepse_api:reports", ok > 0, f"{ok} companies, {fail} failed")
+        self.save_status()
+        return ok
+
     # ------------------------------------------------------------ fundamentals
     def update_fundamentals(self, symbols: list[str] | None = None, limit: int | None = None) -> pd.DataFrame:
         uni = store.read_universe(self.paths)

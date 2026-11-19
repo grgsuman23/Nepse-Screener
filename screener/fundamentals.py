@@ -7,9 +7,11 @@ import pandas as pd
 BASE_FIELDS = ["eps", "bvps", "div_pct", "bonus_pct", "shares_outstanding", "roe_reported", "npl", "car"]
 
 
-def choose_mode(snapshots: pd.DataFrame, last_date: pd.Timestamp, mode: str) -> str:
+def choose_mode(snapshots: pd.DataFrame, last_date: pd.Timestamp, mode: str, reports: pd.DataFrame | None = None) -> str:
     if mode != "auto":
         return mode
+    if reports is not None and len(reports) and reports["symbol"].nunique() >= 50:
+        return "reports"
     if snapshots is None or snapshots.empty:
         return "current_backfill"
     first = snapshots["snap_date"].min()
@@ -30,10 +32,22 @@ def _prep(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def wide_base_fields(
-    symbols: list[str], dates: pd.DatetimeIndex, latest: pd.DataFrame, snapshots: pd.DataFrame, mode: str
+    symbols: list[str], dates: pd.DatetimeIndex, latest: pd.DataFrame, snapshots: pd.DataFrame, mode: str,
+    reports: pd.DataFrame | None = None,
 ) -> dict[str, pd.DataFrame]:
     """Return {field: wide DataFrame(dates x symbols)} of raw fundamentals."""
     out = {f: pd.DataFrame(np.nan, index=dates, columns=symbols) for f in BASE_FIELDS}
+    if mode == "reports":
+        # EPS / net worth from NEPSE filings (point in time); everything else only
+        # from the dates the screener actually recorded it (weekly snapshots).
+        sn = snapshots_wide(symbols, dates, snapshots)
+        rp = reports_wide(symbols, dates, reports)
+        for f in BASE_FIELDS:
+            out[f] = sn[f]
+        out["eps"] = rp["eps"].fillna(sn["eps"])
+        out["bvps"] = rp["bvps"].fillna(sn["bvps"])
+        out["roe_reported"] = out["roe_reported"] * np.nan   # ROE = EPS / net worth, consistently
+        return out
     if mode == "point_in_time" and snapshots is not None and len(snapshots):
         snaps = _prep(snapshots)
         for f in BASE_FIELDS:
@@ -45,6 +59,66 @@ def wide_base_fields(
         for f in BASE_FIELDS:
             vals = lat[f].reindex(symbols)
             out[f] = pd.DataFrame(np.tile(vals.to_numpy(), (len(dates), 1)), index=dates, columns=symbols)
+    return out
+
+
+def reports_wide(symbols: list[str], dates: pd.DatetimeIndex, reports: pd.DataFrame,
+                 max_age_days: int = 450) -> dict[str, pd.DataFrame]:
+    """Point-in-time EPS and net worth per share from NEPSE filings.
+
+    On each date a company's figures are those of its most recent fiscal period
+    among the reports filed *before* that date (a filing counts from the next
+    session). A later-filed report for an older period (e.g. the audited annual
+    report arriving after the next Q1) does not replace newer figures, but a
+    revised filing for the same period does. Figures older than `max_age_days`
+    are dropped."""
+    out = {f: pd.DataFrame(np.nan, index=dates, columns=symbols) for f in ("eps", "bvps")}
+    if reports is None or reports.empty:
+        return out
+    r = reports.copy()
+    r["submitted"] = pd.to_datetime(r["submitted"], errors="coerce")
+    r["fy_start"] = pd.to_datetime(r["fy_start"], errors="coerce")
+    for c in ("eps", "bvps", "quarter"):
+        r[c] = pd.to_numeric(r[c], errors="coerce")
+    r = r.dropna(subset=["submitted", "fy_start", "quarter"])
+    r = r[(r["eps"].abs() < 2000) | r["eps"].isna()]
+    r.loc[(r["bvps"] <= 0) | (r["bvps"] > 10000), "bvps"] = np.nan
+    r["period"] = r["fy_start"].dt.year * 10 + r["quarter"]
+    col = {s_: j for j, s_ in enumerate(symbols)}
+    E = out["eps"].to_numpy(copy=True)
+    B = out["bvps"].to_numpy(copy=True)
+    for sym, g in r.groupby("symbol"):
+        j = col.get(sym)
+        if j is None:
+            continue
+        g = g.sort_values(["submitted", "period"])
+        best, events = None, []
+        for row in g.itertuples(index=False):
+            if best is None or row.period >= best.period:
+                best = row
+            events.append((row.submitted, best.eps, best.bvps))
+        for k, (sub, eps, bv) in enumerate(events):
+            i0 = dates.searchsorted(sub, side="right")           # usable from the next session
+            i1 = dates.searchsorted(events[k + 1][0], side="right") if k + 1 < len(events) else len(dates)
+            i_age = dates.searchsorted(sub + pd.Timedelta(days=max_age_days), side="right")
+            i1 = min(i1, i_age)
+            if i0 < i1:
+                E[i0:i1, j] = eps
+                B[i0:i1, j] = bv
+    out["eps"] = pd.DataFrame(E, index=dates, columns=symbols)
+    out["bvps"] = pd.DataFrame(B, index=dates, columns=symbols)
+    return out
+
+
+def snapshots_wide(symbols: list[str], dates: pd.DatetimeIndex, snapshots: pd.DataFrame) -> dict[str, pd.DataFrame]:
+    """Fields as recorded by the weekly snapshots, carried forward; NaN before the first snapshot."""
+    out = {f: pd.DataFrame(np.nan, index=dates, columns=symbols) for f in BASE_FIELDS}
+    if snapshots is None or snapshots.empty:
+        return out
+    snaps = _prep(snapshots)
+    for f in BASE_FIELDS:
+        piv = snaps.pivot_table(index="snap_date", columns="symbol", values=f, aggfunc="last").reindex(columns=symbols)
+        out[f] = piv.reindex(piv.index.union(dates)).sort_index().ffill().reindex(dates)
     return out
 
 

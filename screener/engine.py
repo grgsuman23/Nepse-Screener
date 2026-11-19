@@ -150,16 +150,23 @@ def build(cfg: dict, paths: Paths, prices: dict[str, pd.DataFrame] | None = None
 
     # --- fundamentals
     snaps = store.load_snapshots(paths)
-    mode = fmod.choose_mode(snaps, calendar[-1], cfg.get("backtest", {}).get("fundamentals_mode", "auto"))
+    reports = store.read_reports(paths)
+    mode = fmod.choose_mode(snaps, calendar[-1], cfg.get("backtest", {}).get("fundamentals_mode", "auto"), reports)
     if len(fund_latest) == 0 and (snaps is None or snaps.empty):
         warnings.append("No fundamentals yet — run `python run.py fundamentals`. Value/quality factors are skipped.")
     else:
-        base = fmod.wide_base_fields(symbols, calendar, fund_latest, snaps, mode)
+        base = fmod.wide_base_fields(symbols, calendar, fund_latest, snaps, mode, reports)
         ff = fmod.derive(w["close"], base, cfg.get("market", {}).get("face_value", 100))
         w.update(ff)
         w.update(fmod.sector_relative(ff, sector_of))
         if mode == "current_backfill":
             warnings.append("Backtests apply today's fundamentals to past dates (look-ahead bias) until 1 year of weekly snapshots exists.")
+        elif mode == "reports":
+            have = base["eps"].notna().sum(axis=1)
+            first = have[have >= max(20, int(0.3 * len(symbols)))].index
+            since = first[0].strftime("%Y-%m-%d") if len(first) else "—"
+            warnings.append(f"Fundamentals are point in time: EPS and net worth come from each company's NEPSE filings "
+                            f"(broad coverage from {since}); before that, scores use technical factors only.")
 
     # --- scores & stance
     factors = scoring.factor_scores(w)

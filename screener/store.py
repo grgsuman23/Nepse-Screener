@@ -124,3 +124,24 @@ def append_corporate_actions(paths: Paths, events: list[dict]) -> None:
     if f.exists():
         new = pd.concat([pd.read_csv(f), new], ignore_index=True)
     new.drop_duplicates(["symbol", "date"], keep="last").to_csv(f, index=False)
+
+
+REPORT_COLS = ["symbol", "fy_start", "fy", "quarter", "report", "eps", "bvps", "pe_reported", "profit", "paid_up",
+               "submitted", "eps_fixed", "status"]
+
+
+def read_reports(paths: Paths) -> pd.DataFrame:
+    f = paths.fundamentals / "reports.csv"
+    if not f.exists():
+        return pd.DataFrame(columns=REPORT_COLS)
+    return pd.read_csv(f)
+
+
+def write_reports(paths: Paths, df: pd.DataFrame) -> None:
+    """Upsert filings; one row per symbol / fiscal year / quarter / filing date."""
+    old = read_reports(paths)
+    df = pd.concat([old, df[REPORT_COLS]], ignore_index=True) if len(old) else df[REPORT_COLS]
+    df = df.drop_duplicates(["symbol", "fy_start", "quarter", "submitted"], keep="last")
+    df = df.sort_values(["symbol", "submitted", "fy_start", "quarter"])
+    paths.fundamentals.mkdir(parents=True, exist_ok=True)
+    df.to_csv(paths.fundamentals / "reports.csv", index=False)

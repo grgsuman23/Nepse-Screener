@@ -4,7 +4,8 @@
   python run.py diagnose                 test every data source
   python run.py backfill [--limit 20]    download price history (first run)
   python run.py update                   append the latest trading day(s)
-  python run.py fundamentals             refresh EPS / P/E / book value ...
+  python run.py fundamentals             refresh EPS / P/E / book value ... and NEPSE fiscal-report history
+  python run.py reports                  NEPSE fiscal-report history only (point-in-time EPS / net worth)
   python run.py analyze                  indicators, scores, screens, backtests, tracker, dashboard data
   python run.py daily                    update + (weekly) fundamentals + analyze + e-mail
   python run.py intraday                 live prices every ~15 min during market hours (provisional)
@@ -223,7 +224,7 @@ def fundamentals_stale(paths, days: int) -> bool:
 
 def main(argv=None):
     p = argparse.ArgumentParser(description="NEPSE technical + fundamental screener")
-    p.add_argument("command", choices=["diagnose", "universe", "backfill", "update", "fundamentals", "analyze",
+    p.add_argument("command", choices=["diagnose", "universe", "backfill", "update", "fundamentals", "reports", "analyze",
                                        "daily", "intraday", "optimize", "portfolio", "demo"])
     p.add_argument("--limit", type=int, help="only process the first N symbols (testing)")
     p.add_argument("--symbols", help="comma-separated symbols")
@@ -269,6 +270,9 @@ def main(argv=None):
         pl.update_daily()
     elif args.command == "fundamentals":
         pl.update_fundamentals(syms, limit=args.limit)
+        pl.update_reports(syms, limit=args.limit)
+    elif args.command == "reports":
+        pl.update_reports(syms, limit=args.limit)
     elif args.command == "analyze":
         cmd_analyze(cfg, paths, args)
     elif args.command == "daily":
@@ -286,6 +290,7 @@ def main(argv=None):
             pl.update_daily()
         if fundamentals_stale(paths, 7):
             pl.update_fundamentals(syms, limit=args.limit)
+            pl.update_reports(syms, limit=args.limit)
         cmd_analyze(cfg, paths, args)
     elif args.command == "intraday":
         cmd_intraday(cfg, paths, args)

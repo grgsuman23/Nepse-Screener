@@ -151,9 +151,11 @@ backtest:
   initial_capital: 1000000
   execution: next_open               # next_open | next_close
   # fundamentals_mode:
-  #   point_in_time   -> only use fundamentals known on that date (honest; needs history)
+  #   reports         -> EPS / net worth from NEPSE filings, each used only from the
+  #                      day after it was filed; other fields from weekly snapshots (honest)
+  #   point_in_time   -> only the screener's own weekly snapshots (needs a year of history)
   #   current_backfill-> apply today's EPS/BVPS to the past (optimistic, flagged)
-  #   auto            -> point_in_time once >= 1 year of snapshots exist
+  #   auto            -> reports when data/fundamentals/reports.csv exists, else as before
   fundamentals_mode: auto
   risk_free_rate: 0.05
   start: "2020-01-01"

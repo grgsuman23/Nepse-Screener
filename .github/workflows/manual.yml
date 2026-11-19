@@ -15,7 +15,8 @@ on:
           - diagnose       # test every data source and print the result
           - backfill       # download missing price history
           - rebackfill     # re-download ALL price history (slow)
-          - fundamentals   # refresh EPS / P/E / book value now
+          - fundamentals   # refresh EPS / P/E / book value now (+ report history)
+          - reports        # NEPSE quarterly-report history (point-in-time fundamentals)
           - analyze        # rebuild dashboard from stored data
           - optimize       # parameter search for all strategies
           - test           # run the unit tests
@@ -53,6 +54,7 @@ jobs:
             backfill)     python run.py backfill ;;
             rebackfill)   python run.py backfill --force ;;
             fundamentals) python run.py fundamentals ;;
+            reports) python run.py reports && python run.py analyze --no-email ;;
             analyze)      python run.py analyze --no-email ;;
             optimize)     python run.py optimize && python run.py analyze --no-email ;;
             test)         python -m pytest -q tests ;;

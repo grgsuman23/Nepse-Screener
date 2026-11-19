@@ -182,3 +182,35 @@ def test_circuit_limit_is_date_aware():
                        "close": [100, 86, 100, 86], "volume": [1, 1, 1, 1]})
     _, ev = auto_adjust(df, "X", -0.11, lambda d: circuit_limit_on(cfg, d))
     assert [e["date"] for e in ev] == ["2025-01-06"]
+
+
+def test_point_in_time_reports():
+    import pandas as pd
+
+    from screener.fundamentals import reports_wide
+    from screener.sources.nepse_api import normalize_reports
+
+    def rec(q, fy_from, eps, bv, sub, profit=None, paid=None, annual=False):
+        return {"applicationStatus": 3, "fiscalReport": {
+            "quarterMaster": None if annual else {"quarterName": ["First", "Second", "Third", "Fourth"][q - 1] + " Quarter"},
+            "reportTypeMaster": {"reportName": "Annual Report" if annual else "Quarterly Report"},
+            "financialYear": {"fromYear": fy_from, "fyNameNepali": "x"}, "epsValue": eps, "netWorthPerShare": bv,
+            "profitAmount": profit, "paidUpCapital": paid}, "applicationDocumentDetailsList": [{"submittedDate": sub}]}
+
+    r = normalize_reports("AAA", [
+        rec(4, "2024-07-16", 26.0, 220, "2025-08-12"),
+        rec(1, "2025-07-17", 25.0, 230, "2025-11-06"),
+        rec(0, "2024-07-16", 22.0, 215, "2026-05-18", annual=True),    # audited FY 2024/25, filed late
+        # YTD (not annualised) EPS: 10 Rs on profit 1,000,000 / 100,000 shares in Q2 -> 20 annualised
+        rec(2, "2025-07-17", 10.0, 232, "2026-01-29", profit=1_000_000, paid=10_000_000),
+    ])
+    assert set(r["quarter"]) == {1, 2, 4, 5}
+    assert r.loc[r["quarter"] == 2, "eps"].iloc[0] == 20.0 and r.loc[r["quarter"] == 2, "eps_fixed"].iloc[0] == 1
+    dates = pd.bdate_range("2025-08-01", "2026-06-30")
+    w = reports_wide(["AAA"], dates, r)
+    e = w["eps"]["AAA"]
+    assert pd.isna(e[pd.Timestamp("2025-08-12")])            # not usable on the filing day
+    assert e[pd.Timestamp("2025-08-13")] == 26.0
+    assert e[pd.Timestamp("2025-11-07")] == 25.0
+    assert e[pd.Timestamp("2026-02-02")] == 20.0
+    assert e[pd.Timestamp("2026-06-01")] == 20.0             # late annual for an older year doesn't override

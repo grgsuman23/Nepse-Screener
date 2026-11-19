@@ -164,6 +164,19 @@ class NepseApi:
         except Exception:  # noqa: BLE001
             return None
 
+    def company_ids(self) -> dict[str, int]:
+        return self.n.getCompanyIDKeyMap()
+
+    def fiscal_reports(self, symbol: str, company_id: int | None = None) -> pd.DataFrame:
+        """Every quarterly / annual report the company has filed with NEPSE
+        (EPS, net worth per share, profit, filing date). History starts around
+        2022 for most companies."""
+        cid = company_id or self.company_ids().get(symbol)
+        if cid is None:
+            return pd.DataFrame()
+        data = self.n.requestGETAPI(url=f"/api/nots/application/reports/{cid}")
+        return normalize_reports(symbol, data if isinstance(data, list) else [])
+
     def index_history(self) -> pd.DataFrame:
         """NEPSE index daily graph -> DataFrame[date, close]."""
         data = self.n.getDailyNepseIndexGraph()
@@ -180,6 +193,44 @@ class NepseApi:
         if df.empty:
             return df
         return df.groupby("date", as_index=False)["close"].last()
+
+
+QUARTERS = {"First Quarter": 1, "Second Quarter": 2, "Third Quarter": 3, "Fourth Quarter": 4}
+
+
+def normalize_reports(symbol: str, records: list[dict]) -> pd.DataFrame:
+    """Flatten NEPSE fiscal-report filings into one row per filing.
+
+    quarter 1-4 for quarterly reports, 5 for the audited annual report (it
+    supersedes Q4 of the same fiscal year). `submitted` is the filing date, so
+    a value can only be used from the next session on (point in time).
+    EPS in quarterly reports is meant to be annualised, but some companies file
+    the year-to-date figure instead; when profit and paid-up capital show that,
+    it is annualised here (`eps_fixed` = 1)."""
+    rows = []
+    for r in records or []:
+        fr = r.get("fiscalReport") or {}
+        fy = fr.get("financialYear") or {}
+        rt = (fr.get("reportTypeMaster") or {}).get("reportName") or ""
+        qn = (fr.get("quarterMaster") or {}).get("quarterName")
+        q = QUARTERS.get(qn, 5 if "Annual" in rt else None)
+        docs = r.get("applicationDocumentDetailsList") or []
+        sub = min((d.get("submittedDate") for d in docs if d.get("submittedDate")), default=None)
+        if q is None or not sub or not fy.get("fromYear"):
+            continue
+        eps, bv = to_num(fr.get("epsValue")), to_num(fr.get("netWorthPerShare"))
+        profit, paid = to_num(fr.get("profitAmount")), to_num(fr.get("paidUpCapital"))
+        fixed = 0
+        if q in (1, 2, 3) and eps == eps and profit == profit and paid == paid and paid > 0 and profit > 0 and eps > 0:
+            ytd = profit / (paid / 100)
+            ratio = eps / ytd
+            if abs(ratio - 1) < abs(ratio - 4 / q) and abs(ratio - 1) < 0.25:
+                eps, fixed = eps * 4 / q, 1
+        rows.append({"symbol": symbol, "fy_start": str(fy.get("fromYear"))[:10], "fy": fy.get("fyNameNepali") or fy.get("fyName"),
+                     "quarter": q, "report": rt, "eps": eps, "bvps": bv, "pe_reported": to_num(fr.get("peValue")),
+                     "profit": profit, "paid_up": paid, "submitted": str(sub)[:10], "eps_fixed": fixed,
+                     "status": r.get("applicationStatus")})
+    return pd.DataFrame(rows)
 
 
 def try_create() -> NepseApi | None:
