@@ -137,6 +137,8 @@ class Backtester:
 
     def run(self, strategy: dict, start: str | None = None, end: str | None = None,
             initial_capital: float | None = None) -> Result:
+        if strategy.get("type") == "blend":
+            return self._run_blend(strategy, start, end, initial_capital)
         cfg, a, w = self.cfg, self.a, self.a.w
         bt = cfg.get("backtest", {})
         mk = cfg.get("market", {})
@@ -197,6 +199,23 @@ class Backtester:
         risk = float(strategy.get("risk_per_trade", 0.01))
         max_w = float(strategy.get("max_position_weight", cfg.get("portfolio", {}).get("max_position_weight", 0.2)))
         rebalance = strategy.get("rebalance", "monthly")
+        sec_cap = strategy.get("max_per_sector")
+        sec_cap = int(sec_cap) if sec_cap not in (None, "", "null") else None
+        sec_of = [a.sector_of.get(x, "Others") for x in syms]
+
+        def capped(order, held=()):
+            """Best-ranked names, at most `max_per_sector` from any one sector."""
+            if not sec_cap:
+                return list(order[:max_pos])
+            cnt, out = {}, []
+            for j in order:
+                k = sec_of[j]
+                if cnt.get(k, 0) < sec_cap:
+                    out.append(j)
+                    cnt[k] = cnt.get(k, 0) + 1
+                if len(out) >= max_pos:
+                    break
+            return out
 
         cash = capital
         unsettled: list[tuple[int, float]] = []
@@ -346,7 +365,7 @@ class Backtester:
                     else:
                         elig = np.where(filt[i])[0]
                         elig = sorted(elig, key=lambda j: -(rank[i, j] if rank[i, j] == rank[i, j] else -1e18))
-                        top = list(elig[:max_pos])
+                        top = capped(elig)
                         keep = []
                         for j in pos:
                             if j in pend_sell:
@@ -357,7 +376,19 @@ class Backtester:
                             else:
                                 pend_sell[j] = "rotated out"
                         keep = keep[:max_pos]
-                        new = [j for j in top if j not in pos][: max(0, max_pos - len(keep))]
+                        if sec_cap:  # held names count against the sector cap too
+                            cnt = {}
+                            for j in keep:
+                                cnt[sec_of[j]] = cnt.get(sec_of[j], 0) + 1
+                            new = []
+                            for j in top:
+                                if j in pos or cnt.get(sec_of[j], 0) >= sec_cap:
+                                    continue
+                                new.append(j)
+                                cnt[sec_of[j]] = cnt.get(sec_of[j], 0) + 1
+                            new = new[: max(0, max_pos - len(keep))]
+                        else:
+                            new = [j for j in top if j not in pos][: max(0, max_pos - len(keep))]
                         # sells settle T+2: unfilled picks are retried daily until the next rebalance
                         wish = [(j, "rebalance pick") for j in new]
                         pend_buy = list(wish)
@@ -385,6 +416,93 @@ class Backtester:
                       open_positions=open_positions, metrics=m, bench_metrics=bm,
                       yearly=yearly_returns(equity, bench), current=cur, warnings=warnings)
 
+    # ------------------------------------------------------------------ blend
+    @staticmethod
+    def resolve_sleeves(strategy: dict) -> list[dict]:
+        """Sleeves of a blend: [{label, weight, strategy}] with `use:` resolved
+        against strategies.yaml and `overrides:` applied on top."""
+        from screener.config import load_strategies, materialize_strategy
+
+        lib = {s["id"]: s for s in load_strategies()}
+        out = []
+        for sl in strategy.get("sleeves") or []:
+            base = lib.get(sl.get("use")) if sl.get("use") else sl.get("strategy")
+            if base is None:
+                raise ValueError(f"Blend {strategy.get('id')}: unknown sleeve strategy {sl.get('use')!r}")
+            if base.get("type") == "blend":
+                raise ValueError("A blend cannot contain another blend")
+            ms = materialize_strategy(base)
+            ms.update(sl.get("overrides") or {})
+            out.append({"label": sl.get("label") or ms.get("name") or sl.get("use"), "weight": float(sl.get("weight", 0)),
+                        "use": sl.get("use"), "strategy": ms})
+        tot = sum(x["weight"] for x in out)
+        if not out or tot <= 0:
+            raise ValueError(f"Blend {strategy.get('id')}: no sleeves with weight")
+        for x in out:
+            x["weight"] /= tot
+        return out
+
+    def _run_blend(self, strategy: dict, start, end, initial_capital) -> Result:
+        """Several strategies run side by side on their share of the capital and
+        brought back to the target weights at each rebalance (default quarterly).
+        Each sleeve trades with its own costs, tax, T+2 and liquidity limits; the
+        rebalance itself is modelled as a cash transfer between sleeves."""
+        cfg = self.cfg
+        capital = float(initial_capital or cfg.get("backtest", {}).get("initial_capital", 1_000_000))
+        sleeves = self.resolve_sleeves(strategy)
+        runs = [self.run(sl["strategy"], start=start, end=end, initial_capital=capital * sl["weight"]) for sl in sleeves]
+        idx = runs[0].equity.index
+        R = np.column_stack([r.equity.reindex(idx).ffill().pct_change().fillna(0).to_numpy() for r in runs])
+        X = np.column_stack([r.exposure.reindex(idx).fillna(0).to_numpy() for r in runs])
+        w = np.array([sl["weight"] for sl in sleeves])
+        val = capital * w
+        reb = strategy.get("rebalance", "quarterly")
+        eq, ex, vals = np.zeros(len(idx)), np.zeros(len(idx)), np.zeros((len(idx), len(w)))
+        last = None
+        for i, d in enumerate(idx):
+            key = _period_key(d, reb)
+            if last is not None and key != last:
+                val = val.sum() * w
+            last = key
+            val = val * (1 + R[i])
+            eq[i], vals[i] = val.sum(), val
+            ex[i] = float((val * X[i]).sum() / val.sum()) if val.sum() > 0 else 0.0
+        equity = pd.Series(eq, index=idx)
+        exposure = pd.Series(ex, index=idx)
+        bench = runs[0].benchmark
+        trades = []
+        for sl, r in zip(sleeves, runs):
+            for t in r.trades:
+                t2 = Trade(**{**asdict(t), "reason": f"[{sl['label']}] {t.reason}"})
+                trades.append(t2)
+        trades.sort(key=lambda t: (t.exit_date or "", t.entry_date))
+        open_positions = []
+        for k, (sl, r) in enumerate(zip(sleeves, runs)):
+            scale = vals[-1, k] / r.equity.iloc[-1] if r.equity.iloc[-1] > 0 else 1.0
+            for p in r.open_positions:
+                open_positions.append({**p, "qty": int(p["qty"] * scale), "sleeve": sl["label"]})
+        m = metrics(equity, trades, cfg, exposure)
+        bm = metrics(bench, None, cfg)
+        m["excess_cagr"] = m.get("cagr", 0) - bm.get("cagr", 0)
+        m["sleeves"] = [{"label": sl["label"], "use": sl["use"], "target_weight": round(sl["weight"], 3),
+                         "weight_now": round(float(vals[-1, k] / vals[-1].sum()), 3),
+                         "cagr": r.metrics.get("cagr"), "max_drawdown": r.metrics.get("max_drawdown")}
+                        for k, (sl, r) in enumerate(zip(sleeves, runs))]
+        cur = {"date": idx[-1].strftime("%Y-%m-%d"), "entries": [], "exits": [], "picks": [], "sleeves": []}
+        seen = set()
+        for sl, r in zip(sleeves, runs):
+            c = r.current or {}
+            names = c.get("picks") or c.get("entries") or []
+            cur["sleeves"].append({"label": sl["label"], "weight": round(sl["weight"], 3), "picks": names,
+                                   "regime_ok": c.get("regime_ok", True)})
+            for n in names:
+                if n not in seen:
+                    seen.add(n)
+                    cur["picks"].append(n)
+        return Result(strategy=strategy, equity=equity, benchmark=bench, exposure=exposure, trades=trades,
+                      open_positions=open_positions, metrics=m, bench_metrics=bm,
+                      yearly=yearly_returns(equity, bench), current=cur, warnings=[w for r in runs for w in r.warnings])
+
     def current_signals(self, strategy: dict, at: pd.Timestamp) -> dict:
         """What the strategy says *today* (for the dashboard & tracker)."""
         w = self.a.w
@@ -407,7 +525,18 @@ class Backtester:
             f = ev.mask(strategy.get("filter") or "close > 0").iloc[-1]
             elig = f[f].index.tolist()
             elig.sort(key=lambda s: -(rank_row.get(s, 0) if rank_row.get(s, 0) == rank_row.get(s, 0) else 0))
-            out["picks"] = elig[: int(strategy.get("top_n") or 8)] if ok else []
+            n, cap = int(strategy.get("top_n") or 8), strategy.get("max_per_sector")
+            if cap not in (None, "", "null"):
+                cnt, sel = {}, []
+                for s_ in elig:
+                    k = self.a.sector_of.get(s_, "Others")
+                    if cnt.get(k, 0) < int(cap):
+                        sel.append(s_)
+                        cnt[k] = cnt.get(k, 0) + 1
+                    if len(sel) >= n:
+                        break
+                elig = sel
+            out["picks"] = elig[:n] if ok else []
             out["regime_ok"] = ok
         return out
 
@@ -424,8 +553,11 @@ def result_to_json(r: Result, points: int = 400) -> dict:
         "id": s.get("id"), "name": s.get("name"), "type": s.get("type", "signal"),
         "description": (s.get("description") or "").strip(),
         "rules": {k: s.get(k) for k in ("entry", "exit", "filter", "rank_by", "hold_while", "regime_filter",
-                                         "rebalance", "top_n", "max_positions", "stop_atr", "stop_loss_pct", "size_by",
-                                         "take_profit_pct", "max_hold_days") if s.get(k) not in (None, "")},
+                                         "rebalance", "top_n", "max_per_sector", "max_positions", "stop_atr", "stop_loss_pct", "size_by",
+                                         "take_profit_pct", "max_hold_days") if s.get(k) not in (None, "")}
+                 | ({"sleeves": "; ".join(f"{x.get('label') or x.get('use')} {float(x.get('weight', 0)):.0%}"
+                                          + (f" ({x['use']}" + (", " + ", ".join(f"{k}={v}" for k, v in (x.get('overrides') or {}).items()) if x.get('overrides') else "") + ")" if x.get('use') else "")
+                                          for x in s.get("sleeves") or [])} if s.get("sleeves") else {}),
         "params": s.get("_params", {}),
         "metrics": r.metrics, "benchmark_metrics": r.bench_metrics, "yearly": r.yearly,
         "curve": {"dates": [d.strftime("%Y-%m-%d") for d in eq.index], "equity": eq.round(0).tolist(),

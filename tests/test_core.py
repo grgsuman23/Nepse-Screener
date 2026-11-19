@@ -141,3 +141,27 @@ def test_portfolio_advice(demo):
     a, paths = demo
     pf = analyze(a, load_portfolio(str(paths.root / "demo_portfolio.csv")), CFG)
     assert pf["positions"] and all(p["action"] in ("EXIT", "REDUCE", "HOLD", "ADD") for p in pf["positions"])
+
+
+
+def test_blend_strategy_combines_sleeves(demo):
+    import numpy as np
+
+    from screener.backtest import Backtester
+    from screener.config import load_settings, load_strategies, materialize_strategy
+
+    a, cfg = demo[0], load_settings()
+    bt = Backtester(a, cfg)
+    s = materialize_strategy({x["id"]: x for x in load_strategies()}["core_satellite"])
+    r = bt.run(s)
+    assert len(r.equity) > 30 and np.isfinite(r.equity).all()
+    sl = r.metrics["sleeves"]
+    assert [x["label"] for x in sl] == ["Core", "Satellite"]
+    assert abs(sum(x["target_weight"] for x in sl) - 1) < 1e-9
+    # every trade is tagged with its sleeve, and the current picks list each sleeve
+    assert all(t.reason.startswith("[") for t in r.trades)
+    assert [x["label"] for x in r.current["sleeves"]] == ["Core", "Satellite"]
+    # single-sleeve blend reproduces the sleeve itself
+    one = {"id": "x", "type": "blend", "rebalance": "quarterly", "sleeves": [{"use": "quality_value", "weight": 1}]}
+    q = bt.run(materialize_strategy({x["id"]: x for x in load_strategies()}["quality_value"]))
+    assert abs(bt.run(one).equity.iloc[-1] / q.equity.iloc[-1] - 1) < 1e-6

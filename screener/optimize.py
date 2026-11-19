@@ -79,3 +79,26 @@ def optimize(bt: Backtester, strategy: dict, cfg: dict, start: str | None = None
 
 def _pick(m: dict) -> dict:
     return {k: m.get(k) for k in ("cagr", "max_drawdown", "sharpe", "win_rate", "trades", "calmar")}
+
+
+def validate_fixed(bt: Backtester, strategy: dict, cfg: dict) -> dict:
+    """Out-of-sample check for a strategy with fixed rules (nothing to tune):
+    run it on the first part of the history and on the rest, and see whether it
+    beat buy-and-hold NEPSE in each part."""
+    oc = cfg.get("optimize", {})
+    dates = bt.a.dates
+    bs = cfg.get("backtest", {}).get("start")
+    if bs:
+        dates = dates[dates >= pd.Timestamp(bs)]
+    split = dates[int(len(dates) * float(oc.get("train_fraction", 0.7)))]
+    train_end = (split - pd.Timedelta(days=1)).strftime("%Y-%m-%d")
+    test_start = split.strftime("%Y-%m-%d")
+    tr = bt.run(strategy, start=str(dates[0].date()), end=train_end)
+    te = bt.run(strategy, start=test_start, end=str(dates[-1].date()))
+    a, b = tr.metrics.get("excess_cagr") or 0, te.metrics.get("excess_cagr") or 0
+    verdict = ("beats NEPSE in both" if a > 0 and b > 0 else
+               "lags NEPSE in both" if a <= 0 and b <= 0 else
+               "beat NEPSE early only" if a > 0 else "beat NEPSE recently only")
+    pick = lambda r: {**_pick(r.metrics), "excess_cagr": r.metrics.get("excess_cagr"), "bench_cagr": r.bench_metrics.get("cagr")}
+    return {"train_period": [str(dates[0].date()), train_end], "test_period": [test_start, str(dates[-1].date())],
+            "train": pick(tr), "test": pick(te), "verdict": verdict}

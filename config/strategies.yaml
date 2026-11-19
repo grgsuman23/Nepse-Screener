@@ -199,3 +199,28 @@ strategies:
     hold_while: "stance_sizing >= 0"
     size_by: pos_size_sizing
     top_n: 10
+
+  # ---- core-satellite: quality core + model satellite ----------------------
+  - id: core_satellite
+    name: Core-Satellite (Quality-Value core 60% + Composite Model 40%)
+    type: blend
+    description: >
+      60% of capital in a slow Quality-Value core: the 15 liquid, profitable
+      stocks with the best value-plus-quality score, above their 200-day
+      average, at most 4 from any one sector, reviewed quarterly. 40% in a
+      faster satellite that follows the composite model's calls with the
+      combined bear-market rule. The two are brought back to 60/40 every
+      quarter. Tested on two splits of the history: split at 1 Jan 2024 it beat
+      NEPSE in both stretches; at the standard 70/30 split (Aug 2024) it lagged
+      NEPSE slightly in the second stretch, but by much less than the model
+      alone. A pullback-entry rule for the satellite was tried and rejected:
+      it helped 2020-23 but hurt 2024-26.
+    rebalance: quarterly
+    sleeves:
+      - label: Core
+        use: quality_value
+        weight: 0.6
+        overrides: {top_n: 15, max_per_sector: 4}
+      - label: Satellite
+        use: model_score
+        weight: 0.4

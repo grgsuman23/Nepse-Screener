@@ -51,6 +51,11 @@ def cmd_analyze(cfg, paths, args, demo: bool = False):
                 r = bt.run(ms)
                 j = result_to_json(r, int(cfg.get("export", {}).get("equity_curve_points", 400)))
                 j["optimization"] = opt.get(s["id"])
+                try:
+                    from screener.optimize import validate_fixed
+                    j["validation"] = validate_fixed(bt, ms, cfg)
+                except Exception as e:  # noqa: BLE001
+                    log.warning("  validation of %s failed: %s", s["id"], e)
                 if a.fundamentals_mode == "current_backfill" and any(k in str(ms) for k in ("eps", "roe", "pe ", "score_value", "score_quality", "score")):
                     j["warnings"].append("Uses today's fundamentals for past dates (optimistic) until fundamental history builds up.")
                 strategies_json.append(j)

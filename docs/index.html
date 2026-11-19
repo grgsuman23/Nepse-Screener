@@ -844,13 +844,14 @@ R.strategies = function(){
   if(!S.strat) S.strat=[...SX].sort((a,b)=>(b.metrics.calmar||0)-(a.metrics.calmar||0))[0].id;
   const b=SX[0].benchmark_metrics||{};
   const vc={robust:'c1',fragile:'c-1','over-fitted':'c-2','no edge':'c-2'};
+  window.VV={'beats NEPSE in both':'c1','beat NEPSE recently only':'c0','beat NEPSE early only':'c-1','lags NEPSE in both':'c-2'};
   el.innerHTML=`<div class="pagehead"><h1>Strategies</h1><p>Backtested ${esc(SX[0].metrics.start)} to ${esc(SX[0].metrics.end)} after NEPSE commission, SEBON fee, DP charge, capital gains tax, T+2 settlement and circuit limits.</p></div>
   <div class="tbl" style="max-height:none"><table><thead><tr><th>Strategy</th><th>Equity curve</th><th class="num">CAGR</th><th class="num">vs NEPSE</th><th class="num">Max drawdown</th><th class="num">Sharpe</th><th class="num">Win rate</th><th class="num">Trades</th><th>Out-of-sample</th><th>Today</th></tr></thead><tbody>
-    ${[...SX].sort((x,y)=>(y.metrics.calmar||0)-(x.metrics.calmar||0)).map(s=>{ const m=s.metrics, o=s.optimization, t=(s.current.entries||s.current.picks||[]);
-      return `<tr class="row" onclick="S.strat='${s.id}';S.stab='overview';R.strategies()" style="${s.id===S.strat?'box-shadow:inset 3px 0 0 var(--brandred);background:var(--blue-soft)':''}"><td><span class="sym">${esc(s.name)}</span><span class="nm">${s.type==='signal'?'Entry and exit rules':'Periodic rotation'}</span></td>
+    ${[...SX].sort((x,y)=>(y.metrics.calmar||0)-(x.metrics.calmar||0)).map(s=>{ const m=s.metrics, o=s.optimization, va=s.validation, t=((s.current.entries||[]).length?s.current.entries:(s.current.picks||[]));
+      return `<tr class="row" onclick="S.strat='${s.id}';S.stab='overview';R.strategies()" style="${s.id===S.strat?'box-shadow:inset 3px 0 0 var(--brandred);background:var(--blue-soft)':''}"><td><span class="sym">${esc(s.name)}</span><span class="nm">${s.type==='signal'?'Entry and exit rules':s.type==='blend'?'Blend of strategies':'Periodic rotation'}</span></td>
       <td>${spark(s.curve.equity.filter((_,i,a)=>i%Math.ceil(a.length/60)===0),110,28)}</td><td class="num ${tone(m.cagr)}"><b>${fmt.sp(m.cagr)}</b></td><td class="num ${tone(m.excess_cagr)}">${fmt.sp(m.excess_cagr)}</td>
       <td class="num down">${fmt.p(m.max_drawdown)}</td><td class="num">${fmt.n(m.sharpe)}</td><td class="num">${fmt.p(m.win_rate,0)}</td><td class="num">${fmt.i(m.trades)}</td>
-      <td>${o?`<span class="call ${vc[o.verdict]||'c0'}">${o.verdict}</span>`:'<span class="faint">not tested</span>'}</td><td style="font-size:13px">${t.length?t.slice(0,3).join(', ')+(t.length>3?` +${t.length-3}`:''):'<span class="faint">none</span>'}</td></tr>`; }).join('')}
+      <td>${o?`<span class="call ${vc[o.verdict]||'c0'}">${o.verdict}</span>`:va?`<span class="call ${VV[va.verdict]||'c0'}" title="Before ${esc(va.test_period[0])}: ${fmt.sp(va.train.excess_cagr)} a year vs NEPSE. Since: ${fmt.sp(va.test.excess_cagr)}">${esc(va.verdict)}</span>`:'<span class="faint">not tested</span>'}</td><td style="font-size:13px">${t.length?t.slice(0,3).join(', ')+(t.length>3?` +${t.length-3}`:''):'<span class="faint">none</span>'}</td></tr>`; }).join('')}
     <tr><td><span class="sym">Buy and hold NEPSE</span><span class="nm">Benchmark</span></td><td></td><td class="num">${fmt.sp(b.cagr)}</td><td></td><td class="num down">${fmt.p(b.max_drawdown)}</td><td class="num">${fmt.n(b.sharpe)}</td><td colspan="4"></td></tr></tbody></table></div>
   ${regimeCompare(SX)}
   <div id="sd" class="mt"></div>`;
@@ -883,7 +884,16 @@ function drawStrat(s){
       <div><h2 style="font-size:16px">Parameter tuning</h2>${o?`<p>Best settings on ${esc(o.train_period.join(' to '))}: <code>${esc(JSON.stringify(o.best.params))}</code></p>
         <div class="kv" style="grid-template-columns:1fr 1fr">${kv('CAGR while tuning',fmt.sp(o.best.train.cagr))}${kv('CAGR on unseen data',`<span class="${tone(o.best.test.cagr)}">${fmt.sp(o.best.test.cagr)}</span>`)}${kv('Drawdown while tuning',fmt.p(o.best.train.max_drawdown))}${kv('Drawdown on unseen data',fmt.p(o.best.test.max_drawdown))}${kv('Settings tested',o.tested)}${kv('Verdict',o.verdict)}</div>
         <p class="mut" style="font-size:13.5px">Robust means the tuned settings kept most of their edge on data they had never seen (${esc(o.test_period.join(' to '))}).</p>`
+        :s.validation?(()=>{ const v=s.validation; return `<p>Fixed rules, so nothing was tuned. The same rules were run on two separate stretches of history:</p>
+        <div class="kv" style="grid-template-columns:1fr 1fr">${kv(`${esc(v.train_period[0])} to ${esc(v.train_period[1])}`,`${fmt.sp(v.train.cagr)} a year`)}${kv('vs NEPSE',`<span class="${tone(v.train.excess_cagr)}">${fmt.sp(v.train.excess_cagr)}</span>`)}${kv(`${esc(v.test_period[0])} to ${esc(v.test_period[1])}`,`${fmt.sp(v.test.cagr)} a year`)}${kv('vs NEPSE',`<span class="${tone(v.test.excess_cagr)}">${fmt.sp(v.test.excess_cagr)}</span>`)}${kv('Worst fall, first stretch',fmt.p(v.train.max_drawdown))}${kv('Worst fall, second stretch',fmt.p(v.test.max_drawdown))}${kv('Verdict',esc(v.verdict))}</div>
+        <p class="mut" style="font-size:13.5px">A strategy that beats NEPSE in both stretches is less likely to be a lucky fit to one market phase.</p>`; })()
         :'<p class="mut">This strategy has no tunable settings, or the weekly tuning has not run yet.</p>'}</div></div>`;
+  } else if(s.type==='blend'){
+    const sl=(cur.sleeves||[]), ms=(s.metrics.sleeves||[]);
+    B.innerHTML=`<p class="mut" style="font-size:13.5px;margin-top:0">Each part runs on its own share of the capital and is brought back to the target split every quarter.</p>
+      <div class="grid cols-2">${sl.map(x=>{ const m=ms.find(y=>y.label===x.label)||{}; return `<div><h2 style="font-size:16px">${esc(x.label)}: ${fmt.p(x.weight,0)} of capital</h2>
+        <p class="mut" style="font-size:13.5px;margin:2px 0 8px">Now ${fmt.p(m.weight_now,0)} · on its own ${fmt.sp(m.cagr)} a year, worst fall ${fmt.p(m.max_drawdown,0)}</p>
+        <p>${(x.picks||[]).length?x.picks.map(lk).join(', '):`<span class="mut">${x.regime_ok===false?'The market filter says hold cash.':'No stock qualifies today.'}</span>`}</p></div>`; }).join('')}</div>`;
   } else {
     B.innerHTML = s.type==='signal'
       ? `<div class="grid cols-2"><div><h2 style="font-size:16px">New entries on ${esc(cur.date)}</h2><p>${(cur.entries||[]).length?cur.entries.map(lk).join(', '):'<span class="mut">No entry signals today.</span>'}</p></div>
