@@ -84,6 +84,7 @@
   const n2 = v => v == null || v === '' ? '' : Number(v).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   function init() {
+    if (!BRIDGE) return;                 // no bridge configured -> don't add a dead button
     const st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
     const btn = document.createElement('button');
     btn.className = 'sca-btn'; btn.type = 'button'; btn.textContent = 'Screener advice';
