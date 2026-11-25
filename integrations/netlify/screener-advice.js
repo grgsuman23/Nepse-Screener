@@ -18,8 +18,9 @@
  */
 (function () {
   const me = document.currentScript;
-  const BRIDGE = (me && me.dataset.bridge) || '';
-  const PAGE_KEY = (me && me.dataset.key) || '';
+  const W = typeof window !== 'undefined' ? window : {};
+  const BRIDGE = (me && me.dataset.bridge) || W.ADVICE_BRIDGE || '';
+  const PAGE_KEY = (me && me.dataset.key) || W.ADVICE_KEY || '';
   const KEY_NAME = 'smv_screener_key';
   const RED = '#ED1B24', BLUE = '#0C4DA1';
   const ACTION = {
