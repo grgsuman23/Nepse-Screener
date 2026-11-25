@@ -31,16 +31,19 @@
   };
 
   const css = `
-  .sca-btn{position:fixed;right:18px;bottom:18px;z-index:9998;background:${BLUE};color:#fff;border:0;border-radius:24px;
+  .sca-btn{position:fixed;right:18px;bottom:18px;z-index:2147482000;background:${BLUE};color:#fff;border:0;border-radius:24px;
     padding:11px 18px;font:600 14px system-ui,-apple-system,Segoe UI,Roboto,sans-serif;box-shadow:0 4px 14px rgba(12,77,161,.35);cursor:pointer}
   .sca-btn:focus-visible,.sca-x:focus-visible,.sca-panel button:focus-visible{outline:3px solid ${RED};outline-offset:2px}
-  .sca-wrap{position:fixed;inset:0;z-index:9999;background:rgba(10,20,40,.45);display:none}
+  .sca-wrap{position:fixed;inset:0;z-index:2147483000;background:rgba(10,20,40,.45);display:none;overflow:hidden}
   .sca-wrap.on{display:block}
-  .sca-panel{position:absolute;right:0;top:0;bottom:0;width:min(760px,100%);background:#fff;color:#1A2333;overflow:auto;
+  .sca-panel{position:fixed;right:0;top:0;bottom:0;width:100%;max-width:480px;box-sizing:border-box;background:#fff;color:#1A2333;
+    overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;
     font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
-  .sca-head{position:sticky;top:0;background:${BLUE};color:#fff;padding:14px 18px;display:flex;align-items:center;gap:12px}
-  .sca-head h2{margin:0;font-size:17px;flex:1}
-  .sca-x{background:transparent;border:0;color:#fff;font-size:22px;cursor:pointer;line-height:1}
+  .sca-head{position:sticky;top:0;z-index:2;background:${BLUE};color:#fff;padding:12px 10px 12px 18px;display:flex;align-items:center;gap:10px}
+  .sca-head h2{margin:0;font-size:17px;flex:1;min-width:0}
+  .sca-x{flex:none;background:rgba(255,255,255,.14);border:0;color:#fff;font-size:24px;line-height:1;cursor:pointer;
+    width:40px;height:40px;border-radius:50%;display:grid;place-items:center}
+  @media (max-width:760px){ .sca-btn{right:14px;bottom:calc(74px + env(safe-area-inset-bottom,0px));padding:10px 15px;font-size:13px} }
   .sca-body{padding:14px 18px 40px}
   .sca-regime{border-left:4px solid ${RED};background:#FFF4F4;padding:10px 12px;margin:0 0 14px}
   .sca-meta{color:#5B6B85;font-size:12.5px;margin:0 0 12px}
@@ -90,8 +93,8 @@
       <div class="sca-body"></div></div>`;
     document.body.append(btn, wrap);
     const body = wrap.querySelector('.sca-body');
-    const close = () => { wrap.classList.remove('on'); btn.focus(); };
-    btn.onclick = () => { wrap.classList.add('on'); wrap.querySelector('.sca-x').focus(); load(body); };
+    const close = () => { wrap.classList.remove('on'); try { document.documentElement.style.overflow = ''; document.body.style.overflow = ''; } catch (e) {} btn.focus(); };
+    btn.onclick = () => { wrap.classList.add('on'); try { document.documentElement.style.overflow = 'hidden'; document.body.style.overflow = 'hidden'; } catch (e) {} wrap.querySelector('.sca-x').focus(); load(body); };
     wrap.querySelector('.sca-x').onclick = close;
     wrap.onclick = e => { if (e.target === wrap) close(); };
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && wrap.classList.contains('on')) close(); });
